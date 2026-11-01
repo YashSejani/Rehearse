@@ -1,0 +1,10 @@
+# kind = "Kubernetes IN Docker". Each "node" below is a Docker container
+# that behaves like a real machine in a Kubernetes cluster.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: rehearse
+nodes:
+  # The control plane runs the Kubernetes "brain": API server, scheduler, etcd.
+  - role: control-plane
+  # The worker is where our app pods (and later Prometheus, Loki, ...) run.
+  - role: worker

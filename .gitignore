@@ -1,0 +1,22 @@
+# Go
+/bin/
+*.test
+*.out
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Model files and training data are large: never commit them
+*.gguf
+*.safetensors
+ml/**/data/
+ml/**/outputs/
+
+# Local secrets and editor files
+.env
+*.kubeconfig
+.idea/
+.vscode/
