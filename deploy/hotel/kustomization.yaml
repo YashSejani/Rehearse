@@ -1,0 +1,107 @@
+# HotelReservation for Rehearse.
+# Manifests vendored unchanged from AIOpsLab's variant of DeathStarBench
+# (github.com/xlab-uiuc/aiopslab-applications @ 8038be6, hotelReservation/kubernetes,
+# Apache-2.0, see LICENSE-aiopslab-applications). Mongo init/fault scripts in scripts/ come from
+# AIOpsLab (aiopslab/generators/fault/script, MIT). All our changes are below, not in the copied files.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hotel
+
+resources:
+  - namespace.yaml
+  - consul/consul-deployment.yaml
+  - consul/consul-service.yaml
+  - frontend/frontend-deployment.yaml
+  - frontend/frontend-service.yaml
+  - geo/geo-deployment.yaml
+  - geo/geo-pvc.yaml
+  - geo/geo-service.yaml
+  - geo/mongodb-geo-deployment.yaml
+  - geo/mongodb-geo-service.yaml
+  - jaeger/jaeger-deployment.yaml
+  - jaeger/jaeger-out.yaml
+  - jaeger/jaeger-service.yaml
+  - profile/memcached-profile-deployment.yaml
+  - profile/memcached-profile-service.yaml
+  - profile/mongodb-profile-deployment.yaml
+  - profile/mongodb-profile-service.yaml
+  - profile/profile-deployment.yaml
+  - profile/profile-pvc.yaml
+  - profile/profile-service.yaml
+  - rate/memcached-rate-deployment.yaml
+  - rate/memcached-rate-service.yaml
+  - rate/mongodb-rate-deployment.yaml
+  - rate/mongodb-rate-service.yaml
+  - rate/rate-deployment.yaml
+  - rate/rate-pvc.yaml
+  - rate/rate-service.yaml
+  - reccomend/mongodb-recommendation-deployment.yaml
+  - reccomend/mongodb-recommendation-service.yaml
+  - reccomend/recommendation-deployment.yaml
+  - reccomend/recommendation-pvc.yaml
+  - reccomend/recommendation-service.yaml
+  - reserve/memcached-reservation-deployment.yaml
+  - reserve/memcached-reservation-service.yaml
+  - reserve/mongodb-reservation-deployment.yaml
+  - reserve/mongodb-reservation-service.yaml
+  - reserve/reservation-deployment.yaml
+  - reserve/reservation-pvc.yaml
+  - reserve/reservation-service.yaml
+  - search/search-deployment.yaml
+  - search/search-service.yaml
+  - user/mongodb-user-deployment.yaml
+  - user/mongodb-user-service.yaml
+  - user/user-deployment.yaml
+  - user/user-pvc.yaml
+  - user/user-service.yaml
+
+# Pin every image. The app image has only a `latest` tag upstream, so we pin its digest.
+images:
+  - name: yinfangchen/hotelreservation
+    digest: sha256:c46c018d412ab466c4cb3ae93b1aaf1a373968e2fafc2767f15539f50cd1683a
+  - name: hashicorp/consul
+    newTag: "1.22.7"
+  - name: memcached
+    newTag: "1.6.45"
+  - name: mongo
+    newTag: "4.4.6"
+  - name: jaegertracing/all-in-one
+    newTag: "1.57"
+
+# The Mongo user setup (admin/admin on geo-db and rate-db) and the auth fault scripts.
+# AIOpsLab creates these ConfigMaps from Python; we generate them here. Fixed names, no hash.
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: mongo-geo-script
+    files: [scripts/k8s-geo-mongo.sh]
+  - name: mongo-rate-script
+    files: [scripts/k8s-rate-mongo.sh]
+  - name: failure-admin-geo
+    files:
+      - scripts/revoke-admin-geo-mongo.sh
+      - scripts/revoke-mitigate-admin-geo-mongo.sh
+      - scripts/remove-admin-mongo.sh
+      - scripts/remove-mitigate-admin-geo-mongo.sh
+  - name: failure-admin-rate
+    files:
+      - scripts/revoke-admin-rate-mongo.sh
+      - scripts/revoke-mitigate-admin-rate-mongo.sh
+      - scripts/remove-admin-mongo.sh
+      - scripts/remove-mitigate-admin-rate-mongo.sh
+
+patches:
+  # Recreate: the old pod stops before the new one starts, so a broken image or a too-low
+  # memory limit is a real outage instead of a hidden stuck rollout (decisions.md, 2026-11-04).
+  # Small memory requests so the scheduler budgets for the laptop (no limits; break-oom adds one).
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: Recreate
+      - op: add
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 32Mi

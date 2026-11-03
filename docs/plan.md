@@ -37,7 +37,7 @@ Ready, `qwen2.5:3b` answers on `localhost:11434/v1/chat/completions` (docs/00-ll
 
 ---
 
-## Phase 1: The playground: a real app you can break (Weeks 1–2)
+## Phase 1: The playground: a real app you can break (Weeks 1–2) · DONE 2026-11-04
 
 **Goal:** Run a microservice app with monitoring, break it by hand, and see the failure in logs and metrics. This is what the agent will later do automatically.
 
@@ -75,9 +75,9 @@ Show every install or cluster-changing command before running it.
 ```
 
 **Done when:**
-- [ ] All HotelReservation pods are Running and the load generator is sending traffic.
-- [ ] For each of the 3 faults, you can find it in Grafana yourself (error logs or a metric jump).
-- [ ] Each fix-* target brings the app back to healthy.
+- [x] All HotelReservation pods are Running and the load generator is sending traffic.
+- [x] For each of the 3 faults, you can find it in Grafana yourself (error logs or a metric jump).
+- [x] Each fix-* target brings the app back to healthy.
 
 ---
 

@@ -24,6 +24,8 @@ Verified on 2026-11-01. Update this file when a tool is upgraded or added.
 | Python | 3.14.4 (system) | Ubuntu. ML code needs 3.11 or 3.12 (AIOpsLab requires `>=3.11,<3.13`). Not installed yet; decide how in Phase 4 (see decisions.md). |
 | git, make, curl, jq | system | Ubuntu |
 
+Host setting (Phase 1): `/etc/sysctl.d/99-rehearse-inotify.conf` raises `fs.inotify.max_user_instances` to 512 and `max_user_watches` to 524288 (kind needs it; see docs/01-observability.md).
+
 Not installed yet (added in later phases): Chaos Mesh (Phase 4), Postgres + pgvector (Phase 5), Kyverno (Phase 6), vCluster CLI (Phase 7), Node.js for the dashboard (Phase 10).
 
 ## Ollama models
@@ -46,3 +48,17 @@ Speed on this CPU: a 32-token answer took about 12 s including model load. Keep 
 
 - Repo: https://github.com/YashSejani/Rehearse (branch `main`, HTTPS remote `origin`).
 - Commits are authored by YashSejani only. Never add Claude co-author lines or mentions.
+
+## In-cluster services (Phase 1)
+
+| What | Namespace | Version | Reach it |
+|---|---|---|---|
+| HotelReservation (19 pods) | `hotel` | AIOpsLab variant, image digest `sha256:c46c018d…` | `kubectl -n hotel port-forward svc/frontend 5000:5000` |
+| Jaeger all-in-one | `hotel` | 1.57 | `kubectl -n hotel port-forward svc/jaeger 16686:16686` |
+| kube-prometheus-stack | `monitoring` | chart 92.17.1 (Prometheus v3.15.1, Grafana 13.3.0) | `make grafana` → http://localhost:3000 (admin / rehearse); Prometheus `svc/kube-prometheus-stack-prometheus 9090` |
+| Loki | `monitoring` | chart 7.5.0 (Loki 3.6.11), single binary | `svc/loki 3100` |
+| Alloy | `monitoring` | chart 1.15.0 (Alloy v1.21.3) | — |
+| k6 load generator | `monitoring` | grafana/k6 2.3.0, 5 req/s | metrics `k6_*` in Prometheus |
+
+Helm repos added on this machine: `prometheus-community`, `grafana`. RAM with everything running: ~10 GiB used of 14 (hotel ~0.6 GiB, monitoring ~1.2 GiB, kind nodes ~4 GiB total), ~5 GiB available.
+

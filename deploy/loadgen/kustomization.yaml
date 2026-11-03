@@ -1,0 +1,14 @@
+# Constant load for HotelReservation (k6, ~5 req/s). Lives in the monitoring namespace so it is
+# not part of the app the agent diagnoses.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - k6-deployment.yaml
+
+# Name gets a content hash, so editing the script restarts k6 automatically.
+configMapGenerator:
+  - name: k6-script
+    files: [k6-script.js]

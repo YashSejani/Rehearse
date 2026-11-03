@@ -1,0 +1,66 @@
+# Grafana Alloy (chart version pinned in the Makefile): reads every pod's stdout through the
+# Kubernetes API and ships it to Loki. Replaces Promtail, which is end-of-life.
+
+controller:
+  # One copy is enough: loki.source.kubernetes reads logs via the API, not from node files,
+  # so a DaemonSet would collect every line once per node (duplicates).
+  type: deployment
+  replicas: 1
+
+alloy:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  configMap:
+    content: |
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // Turn Kubernetes metadata into Loki labels: namespace, pod, container, app.
+      // app = the HotelReservation label io.kompose.service (e.g. geo), else app.kubernetes.io/name.
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_io_kompose_service"]
+          regex         = "(.+)"
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // Kubernetes events (Failed to pull image, BackOff, ScalingReplicaSet...) as log lines with
+      // job="kubernetes-events". HotelReservation logs nothing when a whole pod is missing,
+      // so for image/OOM/scale faults the events are the log evidence.
+      loki.source.kubernetes_events "events" {
+        job_name   = "kubernetes-events"
+        log_format = "logfmt"
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }

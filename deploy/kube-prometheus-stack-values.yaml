@@ -1,0 +1,62 @@
+# kube-prometheus-stack (chart version pinned in the Makefile), sized for a 14 GiB laptop.
+# Gives us Prometheus, Alertmanager, Grafana, kube-state-metrics and node-exporter.
+
+prometheus:
+  prometheusSpec:
+    # k6 pushes its request metrics here with Prometheus remote write (POST /api/v1/write).
+    enableRemoteWriteReceiver: true
+    retention: 3d
+    retentionSize: 4GB
+    scrapeInterval: 15s
+    # Pick up ServiceMonitors/PodMonitors from any namespace, not only ones made by this chart.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+      limits: { memory: 1500Mi }
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
+
+grafana:
+  # Local lab only. Open with: make grafana (port-forward), user admin.
+  adminPassword: rehearse
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.monitoring.svc:3100
+      access: proxy
+    - name: Jaeger
+      type: jaeger
+      uid: jaeger
+      url: http://jaeger.hotel.svc:16686
+      access: proxy
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 48Mi }
+    limits: { memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 24Mi }
+    limits: { memory: 64Mi }
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 192Mi }
+
+# kind runs these control-plane parts bound to localhost, so scraping them only produces
+# "target down" noise. We don't need them for the app.
+kubeEtcd: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeControllerManager: { enabled: false }
+kubeProxy: { enabled: false }

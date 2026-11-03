@@ -59,7 +59,8 @@ Three ways the agent becomes app-specific, built and measured in this order: pro
 
 ## Current state (keep this section true)
 
-- **Done:** Phase 0. **Next:** Phase 1 (playground: HotelReservation + monitoring + 3 faults).
+- **Done:** Phases 0–1. **Next:** Phase 2 (Collector CLI in Go).
+- Playground (`make playground`): HotelReservation in `hotel` (AIOpsLab variant, Recreate strategy), kube-prometheus-stack + Loki + Alloy in `monitoring`, k6 load 5 req/s. Faults: `make break-image|break-oom|break-scale` and `fix-*` (targets geo, mongodb-profile, user). Queries that spot each fault: docs/01-observability.md. Grafana: `make grafana` (admin / rehearse).
 - Machine: Ubuntu 26.04, 8 CPU, ~14 GiB RAM, no GPU. Details and versions: docs/context/environment.md.
 - Tools: Go 1.26 (apt), kubectl 1.37, Helm 4.3, kind 0.33 (`~/go/bin`), Docker 29, Ollama 0.40 (systemd, `127.0.0.1:11434`).
 - Models: `qwen2.5:3b` (agent), `nomic-embed-text` (embeddings). CPU speed ≈ 12 s for a short answer.
@@ -91,7 +92,7 @@ Jaeger · Chaos Mesh · Kyverno · vCluster · Unsloth + PEFT on Colab · Next.j
 ## Progress
 
 - [x] Phase 0: setup (kind cluster Ready, Ollama curl works, repo on GitHub) — 2026-11-01
-- [ ] Phase 1: playground (HotelReservation, Prometheus/Loki/Grafana, load, 3 faults)
+- [x] Phase 1: playground (HotelReservation, Prometheus/Loki/Grafana, load, 3 faults) — 2026-11-04
 - [ ] Phase 2: Collector CLI in Go
 - [ ] Phase 3: first agent (`rehearse why`)
 - [ ] Phase 4: evaluation harness + baseline

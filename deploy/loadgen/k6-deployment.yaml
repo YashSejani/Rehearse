@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  labels:
+    app.kubernetes.io/name: loadgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loadgen
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loadgen
+    spec:
+      containers:
+        - name: k6
+          image: grafana/k6:2.3.0
+          args: ["run", "--quiet", "-o", "experimental-prometheus-rw", "/scripts/k6-script.js"]
+          env:
+            - name: TARGET
+              value: http://frontend.hotel.svc:5000
+            - name: RATE
+              value: "5"
+            - name: K6_PROMETHEUS_RW_SERVER_URL
+              value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
+            - name: K6_PROMETHEUS_RW_PUSH_INTERVAL
+              value: 10s
+            # Latency is sent as ready-made percentiles: k6_http_req_duration_p95 etc. (seconds).
+            - name: K6_PROMETHEUS_RW_TREND_STATS
+              value: "p(50),p(95),p(99),avg"
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: k6-script

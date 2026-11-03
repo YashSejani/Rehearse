@@ -1,0 +1,45 @@
+# Loki (chart version pinned in the Makefile): one pod ("single binary"), files on a local disk.
+# Enough for one laptop; the chart's default is a 9-pod scalable setup with S3, which we don't need.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false          # one tenant, no X-Scope-OrgID header needed
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 72h
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  persistence:
+    size: 5Gi
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 768Mi }
+
+# Scalable-mode pods off.
+read: { replicas: 0 }
+write: { replicas: 0 }
+backend: { replicas: 0 }
+
+# Extras we don't need on a laptop.
+chunksCache: { enabled: false }
+resultsCache: { enabled: false }
+gateway: { enabled: false }       # Grafana and Alloy talk to loki:3100 directly
+lokiCanary: { enabled: false }
+test: { enabled: false }
