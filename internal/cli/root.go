@@ -22,6 +22,7 @@ type rootFlags struct {
 	context    string
 	namespace  string
 	output     string
+	alwaysAsk  bool
 }
 
 // NewRoot builds the command tree. Subcommands added in later phases register here.

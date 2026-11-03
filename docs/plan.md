@@ -118,7 +118,7 @@ Phase 2 of Rehearse. Read CLAUDE.md, the Phase 2 section of docs/plan.md, docs/0
 
 ---
 
-## Phase 3: Your first AI agent (Weeks 3–4)
+## Phase 3: Your first AI agent (Weeks 3–4) · DONE 2026-11-04
 
 **Goal:** `rehearse why deploy/x`: the model reads the evidence, calls tools if it needs more, and returns a root cause, evidence, a confidence score and one typed fix.
 
@@ -154,9 +154,9 @@ Mark one or two small, important pieces as TODO for me to write myself, and tell
 ```
 
 **Done when:**
-- [ ] For each Phase 1 fault, `rehearse why` gives a sensible cause with real evidence lines.
-- [ ] You opened a trace file and can explain each step the model took.
-- [ ] On a healthy deployment it says nothing is wrong (no false alarm).
+- [x] For each Phase 1 fault, `rehearse why` gives a sensible cause with real evidence lines.
+- [x] You opened a trace file and can explain each step the model took.
+- [x] On a healthy deployment it says nothing is wrong (no false alarm).
 
 ---
 

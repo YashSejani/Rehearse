@@ -31,3 +31,13 @@ limits:
   issues: 20           # max problems returned by status
   changes: 15          # max change events returned
   timeout_seconds: 15  # per external call
+
+# The diagnosing agent (Phase 3). Any OpenAI-compatible endpoint works.
+agent:
+  base_url: http://127.0.0.1:11434/v1
+  model: rehearse-base       # qwen2.5:3b with num_ctx 8192 (deploy/ollama/Modelfile.base)
+  max_steps: 8
+  temperature: 0
+  max_tokens: 512            # per reply; a looping model is cut off (~2 min on CPU)
+  trace_dir: traces
+  always_ask_model: false   # false = triage: a healthy target is answered without the model

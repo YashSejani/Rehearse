@@ -30,7 +30,7 @@ type LogLines struct {
 const errorFilter = `(?i)(err|fail|fatal|panic|refused|timeout|timed out|denied|unauthori|exception|oom|killed|back-off|unable|cannot|could not)`
 
 // eventNoise are routine Kubernetes event reasons that never explain a failure.
-const eventNoise = `reason=(Scheduled|Pulled|Created|Started|SuccessfulCreate|SuccessfulDelete)\b`
+const eventNoise = `reason=(Scheduled|Pulled|Pulling|Created|Started|SuccessfulCreate|SuccessfulDelete)\b`
 
 // Logs returns the most recent distinct error lines of one service from Loki, plus the
 // Kubernetes events about its pods and deployment (a service that is down cannot log).

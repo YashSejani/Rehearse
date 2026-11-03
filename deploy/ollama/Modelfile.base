@@ -1,0 +1,6 @@
+# Agent model for Rehearse: qwen2.5:3b with a context window big enough for facts + tool
+# results (Ollama's default is smaller) and deterministic sampling.
+# Build: ollama create rehearse-base -f deploy/ollama/Modelfile.base
+FROM qwen2.5:3b
+PARAMETER num_ctx 8192
+PARAMETER temperature 0

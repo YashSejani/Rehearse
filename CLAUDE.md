@@ -59,13 +59,13 @@ Three ways the agent becomes app-specific, built and measured in this order: pro
 
 ## Current state (keep this section true)
 
-- **Done:** Phases 0–2. **Next:** Phase 3 (first agent, `rehearse why`).
+- **Done:** Phases 0–3. **Next:** Phase 4 (evaluation harness + baseline).
 - Playground (`make playground`): HotelReservation in `hotel` (AIOpsLab variant, Recreate strategy), kube-prometheus-stack + Loki + Alloy in `monitoring`, k6 load 5 req/s. Faults: `make break-image|break-oom|break-scale` and `fix-*` (targets geo, mongodb-profile, user). Queries that spot each fault: docs/01-observability.md. Grafana: `make grafana` (admin / rehearse).
 - Machine: Ubuntu 26.04, 8 CPU, ~14 GiB RAM, no GPU. Details and versions: docs/context/environment.md.
 - Tools: Go 1.26 (apt), kubectl 1.37, Helm 4.3, kind 0.33 (`~/go/bin`), Docker 29, Ollama 0.40 (systemd, `127.0.0.1:11434`).
-- Models: `qwen2.5:3b` (agent), `nomic-embed-text` (embeddings). CPU speed ≈ 12 s for a short answer.
+- Models: `qwen2.5:3b` (agent, used as `rehearse-base` = num_ctx 8192, temp 0, deploy/ollama/Modelfile.base), `nomic-embed-text` (embeddings). CPU speed ≈ 12 s for a short answer.
 - Cluster: kind `rehearse` (context `kind-rehearse`), 1 control plane + 1 worker. `make cluster` / `make delete-cluster`.
-- Go code: module `github.com/YashSejani/Rehearse` (`go 1.26`, `ignore ./reference ./dashboard`). Packages: `internal/config` (config.yaml), `internal/kube`, `internal/collector` (Status/Logs/Metrics/Changes, reaches Prometheus+Loki via the K8s API service proxy), `internal/cli` (cobra). `make build` → `bin/rehearse`, `make test`.
+- Go code: module `github.com/YashSejani/Rehearse` (`go 1.26`, `ignore ./reference ./dashboard`). Packages: `internal/config` (config.yaml), `internal/kube`, `internal/collector` (Status/Logs/Metrics/Changes, reaches Prometheus+Loki via the K8s API service proxy), `internal/llm` (OpenAI-compatible client), `internal/agent` (facts → triage → tool loop → validated Answer, JSONL traces in traces/), `internal/cli` (cobra; `rehearse why deploy/x`). `make build` → `bin/rehearse`, `make test`.
 - System Python is 3.14; ML/AIOpsLab need 3.11–3.12 (set up in Phase 4).
 
 ## Tech stack
@@ -94,7 +94,7 @@ Jaeger · Chaos Mesh · Kyverno · vCluster · Unsloth + PEFT on Colab · Next.j
 - [x] Phase 0: setup (kind cluster Ready, Ollama curl works, repo on GitHub) — 2026-11-01
 - [x] Phase 1: playground (HotelReservation, Prometheus/Loki/Grafana, load, 3 faults) — 2026-11-04
 - [x] Phase 2: Collector CLI in Go — 2026-11-04
-- [ ] Phase 3: first agent (`rehearse why`)
+- [x] Phase 3: first agent (`rehearse why`) — 2026-11-04
 - [ ] Phase 4: evaluation harness + baseline
 - [ ] Phase 5: App Knowledge + RAG
 - [ ] Phase 6: Safety Gate

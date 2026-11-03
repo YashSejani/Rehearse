@@ -56,7 +56,11 @@ type Agent struct {
 	Model       string  `json:"model"`
 	MaxSteps    int     `json:"max_steps"`
 	Temperature float64 `json:"temperature"`
-	TraceDir    string  `json:"trace_dir"`
+	MaxTokens   int     `json:"max_tokens"` // per reply; stops a model that loops
+	// AlwaysAskModel turns off triage: the model is asked even when the deterministic
+	// health check says everything is fine (used to measure false alarms).
+	AlwaysAskModel bool   `json:"always_ask_model"`
+	TraceDir       string `json:"trace_dir"`
 }
 
 // Timeout is the per-call timeout for Kubernetes, Prometheus and Loki requests.
@@ -119,6 +123,9 @@ func (c *Config) fillDefaults() {
 	}
 	if c.Agent.MaxSteps <= 0 {
 		c.Agent.MaxSteps = 8
+	}
+	if c.Agent.MaxTokens <= 0 {
+		c.Agent.MaxTokens = 512
 	}
 	if c.Agent.TraceDir == "" {
 		c.Agent.TraceDir = "traces"

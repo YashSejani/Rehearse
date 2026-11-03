@@ -24,6 +24,10 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · Vendored AIOpsLab app manifests are Apache-2.0** (aiopslab-applications), unlike AIOpsLab itself (MIT). License kept in `deploy/hotel/LICENSE-aiopslab-applications`.
 - **2026-11-04 · Grafana admin password `rehearse`** in values (local lab only, not a secret worth protecting).
 - **2026-11-04 · The CLI reaches Prometheus and Loki through the Kubernetes API service proxy** (client-go, GET only), so no port-forward is needed. `config.yaml` names each backend as `namespace/service:port`, or as a plain `url` for clusters with an ingress. Later the agent's read-only Role needs `get` on `services/proxy` in `monitoring` only.
+- **2026-11-04 · Agent model `rehearse-base`** = qwen2.5:3b with `num_ctx 8192`, temperature 0 (deploy/ollama/Modelfile.base); `max_tokens 512` per reply after a 2,664-token runaway generation.
+- **2026-11-04 · Triage before AI:** `rehearse why` on a target that passes the deterministic health check answers "nothing wrong" without the model (`agent.always_ask_model: false`). The model alone false-alarmed on a just-recovered app. `--always-ask` measures the model's own false alarms.
+- **2026-11-04 · Facts cover the recent past only** (logs/events 10 min, metrics 2 min, last 3 rollouts), plus a computed `CURRENT STATE` line.
+- **2026-11-04 · Answer validation is strict:** evidence must appear in the facts (70% word match); FixImage image must appear in the facts and not be `:latest`; unknown params dropped; one retry in JSON mode, then fallback unknown/None.
 
 ## Open (decide in the phase named)
 
