@@ -23,6 +23,7 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · Host inotify limits raised** (`/etc/sysctl.d/99-rehearse-inotify.conf`: `max_user_instances=512`, `max_user_watches=524288`). With the default 128, kubelet log streaming broke and containerd reported OOM kills as `Error` instead of `OOMKilled`.
 - **2026-11-04 · Vendored AIOpsLab app manifests are Apache-2.0** (aiopslab-applications), unlike AIOpsLab itself (MIT). License kept in `deploy/hotel/LICENSE-aiopslab-applications`.
 - **2026-11-04 · Grafana admin password `rehearse`** in values (local lab only, not a secret worth protecting).
+- **2026-11-04 · The CLI reaches Prometheus and Loki through the Kubernetes API service proxy** (client-go, GET only), so no port-forward is needed. `config.yaml` names each backend as `namespace/service:port`, or as a plain `url` for clusters with an ingress. Later the agent's read-only Role needs `get` on `services/proxy` in `monitoring` only.
 
 ## Open (decide in the phase named)
 

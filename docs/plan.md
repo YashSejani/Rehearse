@@ -81,7 +81,7 @@ Show every install or cluster-changing command before running it.
 
 ---
 
-## Phase 2: Data Collector in Go (Weeks 2–3)
+## Phase 2: Data Collector in Go (Weeks 2–3) · DONE 2026-11-04
 
 **Goal:** A `rehearse` CLI that finds unhealthy pods and fetches logs and metrics for any service. No AI yet; these functions become the agent's tools.
 
@@ -112,9 +112,9 @@ Phase 2 of Rehearse. Read CLAUDE.md, the Phase 2 section of docs/plan.md, docs/0
 ```
 
 **Done when:**
-- [ ] After `make break-oom`, `rehearse status` shows the pod as OOMKilled.
-- [ ] `rehearse logs` and `rehearse metrics` work for any service.
-- [ ] `go test ./...` passes.
+- [x] After `make break-oom`, `rehearse status` shows the pod as OOMKilled.
+- [x] `rehearse logs` and `rehearse metrics` work for any service.
+- [x] `go test ./...` passes.
 
 ---
 

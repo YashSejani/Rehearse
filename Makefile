@@ -17,11 +17,19 @@ BAD_IMAGE    := yinfangchen/hotelreservation:does-not-exist
 # (The Go services use only ~6.5 MiB: a limit that low kills runc itself -> StartError, not OOMKilled.)
 OOM_LIMIT    := 24Mi
 
-.PHONY: help cluster delete-cluster playground hotel helm-repos monitoring loadgen status grafana \
+.PHONY: build test help cluster delete-cluster playground hotel helm-repos monitoring loadgen status grafana \
 	break-image fix-image break-oom fix-oom break-scale fix-scale
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
+
+build: ## Build the rehearse CLI into bin/
+	go build -o bin/rehearse ./cmd/rehearse
+
+test: ## gofmt check, go vet and unit tests
+	@test -z "$$(gofmt -l cmd internal)" || { gofmt -l cmd internal; echo "run gofmt -w"; exit 1; }
+	go vet ./...
+	go test ./...
 
 cluster: ## Create the local kind cluster (1 control plane, 1 worker)
 	@if kind get clusters | grep -qx $(CLUSTER_NAME); then \

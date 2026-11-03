@@ -1,0 +1,33 @@
+# Rehearse configuration. Everything app- or cluster-specific lives here, not in Go code.
+
+kube:
+  context: kind-rehearse          # kubeconfig context; empty = current context
+
+app:
+  namespace: hotel
+  service_label: io.kompose.service   # pod/deployment label that names the service
+  # Which user-facing endpoints (k6 `endpoint` tag) each service serves. Used to show request
+  # rate / errors / latency for a backend service that has no metrics of its own.
+  endpoints:
+    frontend: [hotels, recommendations, user, reservation]
+    search: [hotels]
+    geo: [hotels]
+    rate: [hotels]
+    profile: [hotels]
+    recommendation: [recommendations]
+    user: [user, reservation]
+    reservation: [reservation]
+
+# Backends are reached through the Kubernetes API service proxy ("namespace/service:port"),
+# so no port-forward is needed. Set `url` instead for a backend outside the cluster.
+prometheus:
+  service: monitoring/kube-prometheus-stack-prometheus:9090
+loki:
+  service: monitoring/loki:3100
+  events_selector: '{job="kubernetes-events"}'
+
+limits:
+  log_lines: 20        # max distinct (deduplicated) log lines returned
+  issues: 20           # max problems returned by status
+  changes: 15          # max change events returned
+  timeout_seconds: 15  # per external call
