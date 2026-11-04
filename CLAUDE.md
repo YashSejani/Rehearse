@@ -59,8 +59,9 @@ Three ways the agent becomes app-specific, built and measured in this order: pro
 
 ## Current state (keep this section true)
 
-- **Done:** Phases 0–7. **Next:** Phase 8 data, then Phases 9–11. Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md). With RAG: 12/30 (docs/05-rag.md).
+- **Done:** Phases 0–7, 10. **Next:** Phase 8 data, Phase 9 on Kaggle, Phase 11. Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md). With RAG: 12/30 (docs/05-rag.md).
 - Rehearse services in namespace `rehearse`: Postgres+pgvector (`make rehearse-db`), Safety Gate (`make gate`, own SA, async proposals, sandbox rehearsal in `rehearse-sbx-*` namespaces), Kyverno 3.9.1 + `deploy/policies/`. CLI: `rehearse learn | knowledge ingest|search | fix deploy/x | proposals [id] | approve|reject <id> | sandbox cleanup`.
+- Interfaces: `make serve` (needs `REHEARSE_DASHBOARD_TOKEN`; alerts → incidents → Slack → memory), `dashboard/` on localhost:3001, `rehearse mcp` via `.mcp.json`. Stop `serve` during evals: it would investigate every injected fault.
 - Eval: `make eval LABEL=x ARGS=...` (ml/eval/run.py, scenarios/, Chaos Mesh 2.8.6). Python 3.12 via uv in ml/.venv.
 - Playground (`make playground`): HotelReservation in `hotel` (AIOpsLab variant, Recreate strategy), kube-prometheus-stack + Loki + Alloy in `monitoring`, k6 load 5 req/s. Faults: `make break-image|break-oom|break-scale` and `fix-*` (targets geo, mongodb-profile, user). Queries that spot each fault: docs/01-observability.md. Grafana: `make grafana` (admin / rehearse).
 - Machine: Ubuntu 26.04, 8 CPU, ~14 GiB RAM, no GPU. Details and versions: docs/context/environment.md.
@@ -103,5 +104,5 @@ Jaeger · Chaos Mesh · Kyverno · vCluster · Unsloth + PEFT on Colab · Next.j
 - [x] Phase 7: sandbox rehearsal — 2026-11-04
 - [ ] Phase 8: training data generation
 - [ ] Phase 9: LoRA fine-tuning
-- [ ] Phase 10: interfaces (alerts, Slack, dashboard, MCP)
+- [x] Phase 10: interfaces (alerts, Slack, dashboard, MCP) — 2026-11-04
 - [ ] Phase 11: second app + final evaluation

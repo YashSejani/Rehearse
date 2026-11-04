@@ -1,0 +1,26 @@
+:root { --bg: #f7f7f5; --fg: #1d1d1b; --muted: #6b6b66; --card: #fff; --line: #e3e3de;
+        --ok: #1f7a3a; --bad: #b3261e; --warn: #8a5a00; --accent: #2457c5; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161615; --fg: #ececea; --muted: #a2a29c; --card: #20201e; --line: #34342f;
+          --ok: #5cc27a; --bad: #ff7a70; --warn: #e2b04a; --accent: #7aa2ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+header { display: flex; gap: 24px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--line); }
+header nav a { margin-right: 16px; }
+a { color: var(--accent); text-decoration: none; }
+.brand { font-weight: 700; color: var(--fg); }
+main { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+table { width: 100%; border-collapse: collapse; background: var(--card); }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin: 16px 0; }
+.status { font-weight: 600; }
+.status.applied, .status.ok { color: var(--ok); }
+.status.blocked, .status.rolled_back, .status.failed, .status.rejected { color: var(--bad); }
+.status.awaiting_approval, .status.proposed, .status.watching, .status.applying { color: var(--warn); }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 13px; }
+button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; margin-right: 8px; }
+button.approve { background: var(--ok); color: #fff; border-color: var(--ok); }
+button.reject { background: transparent; color: var(--bad); border-color: var(--bad); }
+.muted { color: var(--muted); }

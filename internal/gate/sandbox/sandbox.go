@@ -38,11 +38,14 @@ type Sandbox struct {
 	// ReproduceWait: how long the broken copy gets to (unexpectedly) become healthy
 	// before the fix is applied. Default 90s.
 	ReproduceWait time.Duration
-	Smoke         Smoke
-	HTTP          *http.Client
-	Poll          time.Duration
-	Log           func(format string, args ...any)
-	newSuffix     func() string
+	// Stable: how long everything must stay available to count as healthy. A container with a
+	// too-low memory limit starts and dies seconds later. Default 30s.
+	Stable    time.Duration
+	Smoke     Smoke
+	HTTP      *http.Client
+	Poll      time.Duration
+	Log       func(format string, args ...any)
+	newSuffix func() string
 }
 
 // Smoke is one HTTP request that must succeed against the copy, e.g. frontend:5000/hotels?...
@@ -267,14 +270,20 @@ func clean(m metav1.ObjectMeta, ns string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{Name: m.Name, Namespace: ns, Labels: m.Labels, Annotations: ann}
 }
 
-// waitHealthy waits until every deployment in the sandbox has all replicas available.
+// waitHealthy waits until every deployment in the sandbox has had all replicas available for
+// the whole Stable period.
 func (s *Sandbox) waitHealthy(ctx context.Context, ns, target string, timeout time.Duration) (bool, string) {
 	deadline := time.Now().Add(timeout)
 	poll := s.Poll
 	if poll == 0 {
 		poll = 5 * time.Second
 	}
+	stable := s.Stable
+	if stable == 0 {
+		stable = 30 * time.Second
+	}
 	why := "timeout"
+	var since time.Time
 	for {
 		deps, err := s.Kube.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
 		if err == nil {
@@ -289,9 +298,17 @@ func (s *Sandbox) waitHealthy(ctx context.Context, ns, target string, timeout ti
 				}
 			}
 			if len(missing) == 0 && len(deps.Items) > 0 {
-				return true, ""
+				if since.IsZero() {
+					since = time.Now()
+				}
+				if time.Since(since) >= stable {
+					return true, ""
+				}
+				why = "available, but not yet for " + stable.String()
+			} else {
+				since = time.Time{}
+				why = "not ready: " + strings.Join(missing, ", ")
 			}
-			why = "not ready: " + strings.Join(missing, ", ")
 		}
 		if time.Now().After(deadline) || ctx.Err() != nil {
 			return false, why

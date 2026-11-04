@@ -49,7 +49,7 @@ func newKube(objs ...runtime.Object) *fake.Clientset {
 
 func sb(kube *fake.Clientset) *Sandbox {
 	return &Sandbox{Kube: kube, SourceNS: "hotel", GateSA: "rehearse/rehearse-gate", Timeout: 2 * time.Second, ReproduceWait: 200 * time.Millisecond,
-		Poll: 10 * time.Millisecond, newSuffix: func() string { return "test1" }}
+		Poll: 10 * time.Millisecond, Stable: 30 * time.Millisecond, newSuffix: func() string { return "test1" }}
 }
 
 func plan(t *testing.T, kube *fake.Clientset, a actions.Action) *actions.Plan {
@@ -168,5 +168,32 @@ func TestSync(t *testing.T) {
 	}
 	if err := s.Create(ctx, "hotel"); err == nil {
 		t.Error("Create must refuse a non-sandbox name")
+	}
+}
+
+// A container that starts and dies again (too-low memory limit) must not count as healthy.
+func TestWaitHealthyRejectsFlapping(t *testing.T) {
+	replicas := int32(1)
+	polls := 0
+	cs := fake.NewClientset()
+	cs.PrependReactor("list", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+		polls++
+		d := appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "db"}, Spec: appsv1.DeploymentSpec{Replicas: &replicas}}
+		if polls%2 == 0 {
+			d.Status.AvailableReplicas = 1
+		}
+		return true, &appsv1.DeploymentList{Items: []appsv1.Deployment{d}}, nil
+	})
+	s := &Sandbox{Kube: cs, Poll: 5 * time.Millisecond, Stable: 30 * time.Millisecond}
+	if healthy, why := s.waitHealthy(context.Background(), "ns", "db", 200*time.Millisecond); healthy {
+		t.Errorf("flapping deployment counted as healthy (%s)", why)
+	}
+}
+
+func TestWaitHealthyAcceptsStable(t *testing.T) {
+	kube := newKube(dep("db", "good", 1))
+	s := &Sandbox{Kube: kube, Poll: 5 * time.Millisecond, Stable: 30 * time.Millisecond}
+	if healthy, why := s.waitHealthy(context.Background(), "hotel", "db", time.Second); !healthy {
+		t.Errorf("stable deployment not healthy: %s", why)
 	}
 }

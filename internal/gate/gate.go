@@ -264,6 +264,30 @@ func (g *Gate) applyAndWatch(ctx context.Context, p *Proposal) {
 	g.finish(ctx, p, StatusApplied, "healthy after change")
 }
 
+// RecoverInterrupted runs when the gate starts. Checks and watches live in memory, so a restart
+// ends them. A proposal left in such a state must not look as if it is still protected: it is
+// marked failed, and a person is told that its auto-undo did not run.
+func (g *Gate) RecoverInterrupted(ctx context.Context) error {
+	list, err := g.Store.List(ctx, 200)
+	if err != nil {
+		return fmt.Errorf("list proposals: %w", err)
+	}
+	for _, p := range list {
+		var why string
+		switch p.Status {
+		case StatusChecking:
+			why = "gate restarted during the checks; nothing was applied, propose it again"
+		case StatusApplying, StatusWatching:
+			why = "gate restarted while watching the change; auto-undo did not run, check the app"
+		default:
+			continue
+		}
+		g.event(ctx, p, "recover", false, why)
+		g.finish(ctx, p, StatusFailed, why)
+	}
+	return nil
+}
+
 func contains(list []string, s string) bool {
 	for _, x := range list {
 		if x == s {

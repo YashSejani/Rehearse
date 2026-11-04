@@ -370,7 +370,7 @@ Phase 9 of Rehearse. Read CLAUDE.md, the Phase 9 section of docs/plan.md and doc
 
 ---
 
-## Phase 10: Interfaces: alerts, Slack, dashboard, MCP (Week 12)
+## Phase 10: Interfaces: alerts, Slack, dashboard, MCP (Week 12) · DONE 2026-11-04
 
 **Goal:** Alerts start investigations automatically, approvals happen in a dashboard, and other AI tools can use Rehearse's safe actions.
 
@@ -390,9 +390,9 @@ Phase 10 of Rehearse. Read CLAUDE.md, the Phase 10 section of docs/plan.md, docs
 ```
 
 **Done when:**
-- [ ] `make break-oom` leads to a Slack message without you typing anything.
-- [ ] Approving in the dashboard fixes the app and appears in the audit history.
-- [ ] Claude Code, connected to your MCP server, can propose a fix that goes through the gate.
+- [x] `make break-oom` leads to a Slack message without you typing anything. (Tested with a local stand-in; a real Slack URL needs Yash.)
+- [x] Approving in the dashboard fixes the app and appears in the audit history.
+- [x] Claude Code, connected to your MCP server, can propose a fix that goes through the gate.
 
 ---
 

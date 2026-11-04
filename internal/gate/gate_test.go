@@ -262,3 +262,34 @@ func TestDiff(t *testing.T) {
 		t.Errorf("diff:\n%s", d)
 	}
 }
+
+func TestRecoverInterruptedMarksUnfinishedProposals(t *testing.T) {
+	ctx := context.Background()
+	g := newGate(newKube(t, nil), Health{Available: true})
+	ids := map[string]int64{}
+	for _, status := range []string{StatusChecking, StatusWatching, StatusAwaiting, StatusApplied} {
+		p := &Proposal{Namespace: "hotel", Deployment: "geo", Status: status}
+		if err := g.Store.Create(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+		ids[status] = p.ID
+	}
+	if err := g.RecoverInterrupted(ctx); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{StatusChecking: StatusFailed, StatusWatching: StatusFailed,
+		StatusAwaiting: StatusAwaiting, StatusApplied: StatusApplied}
+	for before, after := range want {
+		p, err := g.Store.Get(ctx, ids[before])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.Status != after {
+			t.Errorf("%s became %s, want %s", before, p.Status, after)
+		}
+	}
+	p, _ := g.Store.Get(ctx, ids[StatusWatching])
+	if !strings.Contains(p.Reason, "auto-undo did not run") {
+		t.Errorf("reason does not warn the person: %q", p.Reason)
+	}
+}

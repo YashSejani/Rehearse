@@ -15,11 +15,6 @@ prometheus:
       requests: { cpu: 100m, memory: 400Mi }
       limits: { memory: 1500Mi }
 
-alertmanager:
-  alertmanagerSpec:
-    resources:
-      requests: { cpu: 10m, memory: 32Mi }
-      limits: { memory: 128Mi }
 
 grafana:
   # Local lab only. Open with: make grafana (port-forward), user admin.
@@ -60,3 +55,56 @@ kubeEtcd: { enabled: false }
 kubeScheduler: { enabled: false }
 kubeControllerManager: { enabled: false }
 kubeProxy: { enabled: false }
+
+# ---- Phase 10: alerts that start a Rehearse investigation ------------------------------
+additionalPrometheusRulesMap:
+  rehearse:
+    groups:
+      - name: rehearse.hotel
+        rules:
+          - alert: RehearseCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total{namespace="hotel"}[5m]) > 2
+            for: 1m
+            labels: {severity: warning, rehearse: "true"}
+            annotations: {summary: "{{ $labels.pod }} restarted {{ $value | humanize }} times in 5 minutes"}
+          - alert: RehearseDeploymentUnavailable
+            expr: kube_deployment_status_replicas_available{namespace="hotel"} < kube_deployment_spec_replicas{namespace="hotel"}
+            for: 2m
+            labels: {severity: warning, rehearse: "true"}
+            annotations: {summary: "{{ $labels.deployment }} has fewer available replicas than desired"}
+          - alert: RehearseScaledToZero
+            expr: kube_deployment_spec_replicas{namespace="hotel"} == 0
+            for: 1m
+            labels: {severity: warning, rehearse: "true"}
+            annotations: {summary: "{{ $labels.deployment }} is scaled to 0 replicas"}
+          - alert: RehearseHighErrorRate
+            expr: |
+              sum by (endpoint) (rate(k6_http_reqs_total{target_ns="hotel", expected_response="false"}[2m]))
+                / sum by (endpoint) (rate(k6_http_reqs_total{target_ns="hotel"}[2m])) > 0.2
+            for: 2m
+            # users see errors at the entry point; the agent starts there and follows dependencies
+            labels: {severity: critical, rehearse: "true", deployment: frontend}
+            annotations: {summary: "/{{ $labels.endpoint }} error ratio {{ $value | humanizePercentage }}"}
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
+  config:
+    route:
+      receiver: "null"
+      group_by: [alertname, deployment, pod]
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 30m
+      routes:
+        - receiver: rehearse
+          matchers: ['rehearse="true"']
+    receivers:
+      - name: "null"
+      - name: rehearse
+        webhook_configs:
+          # `rehearse serve` on the laptop, reached via the kind network gateway
+          - url: http://172.20.0.1:8090/alerts
+            send_resolved: true

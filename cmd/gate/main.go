@@ -80,6 +80,10 @@ func run(cfgPath, listen string) error {
 		g.Rehearser = r
 	}
 
+	if err := g.RecoverInterrupted(ctx); err != nil {
+		log.Printf("recover interrupted proposals: %v", err)
+	}
+
 	srv := &http.Server{Addr: listen, Handler: g.Handler(token), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
