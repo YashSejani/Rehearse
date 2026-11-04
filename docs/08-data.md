@@ -50,7 +50,7 @@ ls ml/datagen/data/          # raw.jsonl train.jsonl val.jsonl test.jsonl (git-i
 
 ## 4. Results
 
-490 raw examples from 165 fault variations, on 2026-11-04. After removing 114 near-duplicates:
+490 raw examples from 170 fault variations, on 2026-11-04. After removing 114 near-duplicates:
 
 | Split | Examples | Per category |
 |---|---|---|
