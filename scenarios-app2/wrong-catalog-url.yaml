@@ -1,0 +1,10 @@
+name: app2-wrong-catalog-url
+description: orders is rolled out with CATALOG_URL pointing to a host that does not exist
+source: ours
+ask: orders
+inject:
+  - kubectl: [-n, "{ns}", set, env, deployment/orders, CATALOG_URL=http://catalogue:8080]
+wait_for: {error_endpoint: orders, timeout: 180}
+expected: {fault: true, targets: [orders], categories: [config, network], actions: [RollbackDeploy]}
+cleanup:
+  - kubectl: [-n, "{ns}", rollout, undo, deployment/orders]

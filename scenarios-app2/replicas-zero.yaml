@@ -1,0 +1,10 @@
+name: app2-replicas-zero
+description: orders is scaled to 0 replicas
+source: ours
+ask: orders
+inject:
+  - kubectl: [-n, "{ns}", scale, deployment/orders, --replicas=0]
+wait_for: {issue: [ScaledToZero], timeout: 120}
+expected: {fault: true, targets: [orders], categories: [scaling], actions: [ScaleReplicas]}
+cleanup:
+  - kubectl: [-n, "{ns}", scale, deployment/orders, --replicas=1]

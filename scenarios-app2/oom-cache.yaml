@@ -1,0 +1,12 @@
+name: app2-oom-cache
+description: catalog warms a 200 MB cache but has a 64Mi memory limit, so it is OOM-killed at start
+source: ours
+ask: catalog
+inject:
+  - kubectl: [-n, "{ns}", set, env, deployment/catalog, CACHE_MB=200]
+  - kubectl: [-n, "{ns}", set, resources, deployment/catalog, --limits=memory=64Mi]
+wait_for: {issue: [OOMKilled, Killed], timeout: 180}
+expected: {fault: true, targets: [catalog], categories: [resources], actions: [PatchMemoryLimit, RollbackDeploy]}
+cleanup:
+  - kubectl: [-n, "{ns}", patch, deployment, catalog, --type=json, "-p", '[{"op":"remove","path":"/spec/template/spec/containers/0/resources/limits"}]']
+  - kubectl: [-n, "{ns}", set, env, deployment/catalog, CACHE_MB=8]

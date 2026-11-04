@@ -1,0 +1,33 @@
+# Rehearse configuration for the second app (Phase 11). Only this file and scenarios-app2/
+# are app-specific; the Go code is the same as for HotelReservation.
+kube:
+  context: kind-rehearse
+app:
+  namespace: app2
+  service_label: app.kubernetes.io/name
+  endpoints:
+    catalog: [products, orders]
+    orders: [orders]
+prometheus:
+  service: monitoring/kube-prometheus-stack-prometheus:9090
+loki:
+  service: monitoring/loki:3100
+  events_selector: '{job="kubernetes-events"}'
+limits: {log_lines: 20, issues: 20, changes: 15, timeout_seconds: 15}
+agent:
+  base_url: http://127.0.0.1:11434/v1
+  model: rehearse-base
+  max_steps: 8
+  temperature: 0
+  max_tokens: 768
+  trace_dir: traces
+knowledge:
+  service: rehearse/postgres:5432
+  secret: rehearse/rehearse-db
+  embed_model: nomic-embed-text
+  top_k: 5
+  rag: true
+  sources: [knowledge/runbooks]
+gate:
+  service: rehearse/gate:8080
+  token_secret: rehearse/rehearse-gate

@@ -1,0 +1,5 @@
+# Second app for Phase 11 (static Go binary, no OS).
+FROM scratch
+COPY bin/shopdemo-linux /shopdemo
+USER 65532:65532
+ENTRYPOINT ["/shopdemo"]

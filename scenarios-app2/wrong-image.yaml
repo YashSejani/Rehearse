@@ -1,0 +1,10 @@
+name: app2-wrong-image
+description: catalog is rolled out with an image tag that does not exist
+source: ours (same fault type as HotelReservation wrong-image)
+ask: catalog
+inject:
+  - kubectl: [-n, "{ns}", set, image, deployment/catalog, catalog=rehearse-shop:does-not-exist]
+wait_for: {issue: [ImagePullBackOff, ErrImagePull], timeout: 180}
+expected: {fault: true, targets: [catalog], categories: [image], actions: [RollbackDeploy, FixImage]}
+cleanup:
+  - kubectl: [-n, "{ns}", rollout, undo, deployment/catalog]

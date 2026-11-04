@@ -1,0 +1,9 @@
+name: app2-no-fault
+description: nothing is broken; ask about orders
+source: ours
+ask: orders
+inject: []
+# Past the 2-minute metrics window, so errors from the previous scenario are gone.
+wait_for: {seconds: 150, timeout: 160}
+expected: {fault: false, targets: [], categories: [unknown], actions: [None]}
+cleanup: []

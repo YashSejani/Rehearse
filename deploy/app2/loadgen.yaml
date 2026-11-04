@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: loadgen-app2, namespace: monitoring, labels: {app.kubernetes.io/name: loadgen-app2}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app.kubernetes.io/name: loadgen-app2}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: loadgen-app2}}
+    spec:
+      containers:
+        - name: k6
+          image: grafana/k6:2.3.0
+          args: ["run", "--quiet", "-o", "experimental-prometheus-rw", "/scripts/k6-shop.js"]
+          env:
+            - {name: K6_PROMETHEUS_RW_SERVER_URL, value: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write"}
+            - {name: K6_PROMETHEUS_RW_PUSH_INTERVAL, value: 10s}
+            - {name: K6_FEATURES, value: native-histograms}
+          resources: {requests: {cpu: 30m, memory: 48Mi}, limits: {memory: 192Mi}}
+          volumeMounts: [{name: scripts, mountPath: /scripts}]
+      volumes:
+        - name: scripts
+          configMap: {name: k6-shop}
