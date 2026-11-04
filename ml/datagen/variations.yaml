@@ -1,0 +1,103 @@
+# Fault variations for training data (Phase 8). Every run happens in a sandbox copy
+# ({ns} = rehearse-sbx-datagen), never in the real app. {target} and {param} are filled
+# from the lists. `answer` is the correct diagnosis, so the label is known by construction.
+#
+# Held out for the TEST split only (whole fault types, so the score shows generalisation,
+# and these are the types of the AIOpsLab problems run in Phase 11):
+holdout: [db-auth-revoked, pod-failure]
+
+snapshots: [30, 75, 120]     # seconds after injection when the facts are recorded
+
+faults:
+  wrong-image:
+    targets: [geo, profile, rate, search, user, reservation, recommendation, frontend]
+    params: ["yinfangchen/hotelreservation:does-not-exist", "yinfangchen/hotelreservation:v0.9.9-missing", "yinfangchen/hotelreservatoin:1.0", "yinfangchen/hotelreservation:2.0-rc1", "registry.example.com/hotel/reservation:1.4"]
+    inject:
+      - [set, image, "deployment/{target}", "hotel-reserv-{target}={param}"]
+    answer:
+      root_cause: "{target} was rolled out with image {param}, which cannot be pulled, so its pod never starts"
+      category: image
+      action: {type: RollbackDeploy, params: {deployment: "{target}"}}
+      evidence_keywords: [ImagePullBackOff, ErrImagePull, Failed to pull image, image]
+  oom-low-limit:
+    targets: [mongodb-profile, mongodb-geo, mongodb-rate, mongodb-user, mongodb-reservation, mongodb-recommendation]
+    params: [12Mi, 16Mi, 24Mi, 32Mi]
+    inject:
+      - [set, resources, "deployment/{target}", "--requests=memory={param}", "--limits=memory={param}"]
+    answer:
+      root_cause: "{target} is OOMKilled because its memory limit of {param} is far below what MongoDB needs"
+      category: resources
+      action: {type: PatchMemoryLimit, params: {deployment: "{target}", memory: 256Mi}}
+      evidence_keywords: [OOMKilled, Killed, memory limit, limit]
+  replicas-zero:
+    targets: [geo, profile, rate, search, user, reservation, recommendation, frontend, memcached-profile, memcached-rate, memcached-reserve, mongodb-geo, mongodb-profile, mongodb-rate, mongodb-user, mongodb-reservation, mongodb-recommendation]
+    params: [0]
+    inject:
+      - [scale, "deployment/{target}", "--replicas=0"]
+    answer:
+      root_cause: "{target} is scaled to 0 replicas, so no pod serves its requests"
+      category: scaling
+      action: {type: ScaleReplicas, params: {deployment: "{target}", replicas: 1}}
+      evidence_keywords: [ScaledToZero, replicas 0, "0 desired"]
+  missing-configmap-key:
+    targets: [geo, profile, rate, search, user, reservation, recommendation]
+    params: [rate_limit, cache_ttl_seconds, feature_flags, db_pool_size, retry_budget]
+    pre:
+      - [create, configmap, "{target}-settings", "--from-literal=unrelated=1"]
+    inject:
+      - [patch, deployment, "{target}", --type=json, "-p", '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"SETTING","valueFrom":{"configMapKeyRef":{"name":"{target}-settings","key":"{param}"}}}}]']
+    post:
+      - [delete, configmap, "{target}-settings", --ignore-not-found]
+    answer:
+      root_cause: "{target} was rolled out with an env var from key {param} that does not exist in ConfigMap {target}-settings, so its container cannot be created"
+      category: config
+      action: {type: RollbackDeploy, params: {deployment: "{target}"}}
+      evidence_keywords: [CreateContainerConfigError, couldn't find key, configmap, env changed]
+  failing-readiness:
+    targets: [frontend, geo, profile, search, user, rate, reservation, recommendation]
+    params: [/healthz, /ready, /live, /status]
+    inject:
+      - [patch, deployment, "{target}", --type=json, "-p", '[{"op":"add","path":"/spec/template/spec/containers/0/readinessProbe","value":{"tcpSocket":{"port":9999},"periodSeconds":5,"failureThreshold":2}}]']
+    answer:
+      root_cause: "{target} was rolled out with a readiness probe that always fails, so its pod never becomes Ready"
+      category: config
+      action: {type: RollbackDeploy, params: {deployment: "{target}"}}
+      evidence_keywords: [NotReady, readiness, probes changed, Unavailable]
+  db-auth-revoked:
+    targets: [geo, rate]
+    params: [revoke]
+    exec: {selector: "io.kompose.service=mongodb-{target}", script: "/scripts/revoke-admin-{target}-mongo.sh"}
+    restart: "{target}"
+    undo_exec: {selector: "io.kompose.service=mongodb-{target}", script: "/scripts/revoke-mitigate-admin-{target}-mongo.sh"}
+    answer:
+      root_cause: "{target} cannot read its database because the MongoDB admin user lost its readWrite role on mongodb-{target}"
+      category: dependency
+      target: "mongodb-{target}"
+      action: {type: None, params: {}}
+      evidence_keywords: [not authorized, Unauthorized, auth, CrashLoopBackOff, Error]
+  pod-failure:
+    targets: [recommendation, user, geo, rate]
+    params: [pod-failure]
+    chaos: |
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: PodChaos
+      metadata: {name: datagen-pod-failure, namespace: "{ns}"}
+      spec:
+        action: pod-failure
+        mode: one
+        duration: "5m"
+        selector: {namespaces: ["{ns}"], labelSelectors: {io.kompose.service: "{target}"}}
+    answer:
+      root_cause: "the {target} pod is failing (its container was replaced and does not run), so {target} is unavailable"
+      category: unknown
+      action: {type: RestartDeployment, params: {deployment: "{target}"}}
+      evidence_keywords: [CrashLoopBackOff, NotReady, Unavailable, BackOff, Killed]
+  no-fault:
+    targets: [frontend, geo, profile, rate, search, user, reservation, recommendation]
+    params: [none, later]
+    answer:
+      root_cause: "nothing is wrong: all pods are healthy and the endpoints show no errors"
+      category: unknown
+      target: ""
+      action: {type: None, params: {}}
+      evidence_keywords: [HEALTHY]

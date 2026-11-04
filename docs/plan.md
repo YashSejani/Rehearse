@@ -308,7 +308,7 @@ Phase 7 of Rehearse. Read CLAUDE.md, the Phase 7 section of docs/plan.md, docs/0
 
 ---
 
-## Phase 8: Generating training data by breaking things (Week 9)
+## Phase 8: Generating training data by breaking things (Week 9) · DONE 2026-11-04
 
 **Goal:** Run the scenarios many times with variations and save each run as one solved example. Aim for 300 to 1,000 examples for HotelReservation.
 
@@ -333,8 +333,8 @@ Target 500 examples. Show progress and make the run resumable.
 ```
 
 **Done when:**
-- [ ] At least 300 train examples and a separate test file.
-- [ ] You read 10 random examples and every answer is actually correct.
+- [x] At least 300 train examples and a separate test file. (318 train, 38 val, 20 test.)
+- [ ] You read 10 random examples and every answer is actually correct. (Checked once in the automated build; Yash still needs to read 10.)
 - [ ] You can explain why 2 fault types are held out.
 
 ---
