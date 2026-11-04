@@ -1,0 +1,18 @@
+name: missing-configmap-key
+description: rate is rolled out with an env var from a ConfigMap key that does not exist
+source: ours
+ask: rate
+inject:
+  - kubectl: [-n, "{ns}", create, configmap, rate-settings, --from-literal=cache_ttl=60]
+  - kubectl: [-n, "{ns}", patch, deployment, rate, --type=json, "-p", '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"RATE_LIMIT","valueFrom":{"configMapKeyRef":{"name":"rate-settings","key":"rate_limit"}}}}]']
+wait_for: {issue: [CreateContainerConfigError], timeout: 180}
+expected:
+  fault: true
+  targets: [rate]
+  categories: [config]
+  actions: [RollbackDeploy]
+cleanup:
+  # apply cannot delete a list item it never set, so remove the added env var first
+  - kubectl: [-n, "{ns}", patch, deployment, rate, --type=json, "-p", '[{"op":"remove","path":"/spec/template/spec/containers/0/env/1"}]']
+  - kubectl: [apply, -k, deploy/hotel, -l, io.kompose.service=rate]
+  - kubectl: [-n, "{ns}", delete, configmap, rate-settings, --ignore-not-found]

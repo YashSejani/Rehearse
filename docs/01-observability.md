@@ -85,7 +85,7 @@ kubectl -n hotel port-forward svc/frontend 5000:5000
 |---|---|---|
 | Request rate per endpoint | `sum by (endpoint) (rate(k6_http_reqs_total[2m]))` | ~2 / 1.5 / 0.75 / 0.75 req/s (total ~5) |
 | Error ratio per endpoint | see below | 0 (no series at all is also "0") |
-| p95 latency | `max by (endpoint) (k6_http_req_duration_p95)` | a few ms (`/hotels` ≈ 3.5 ms) |
+| p95 latency | `histogram_quantile(0.95, sum by (endpoint) (rate(k6_http_req_duration_seconds[1m])))` | a few ms (`/hotels` ≈ 4 ms). k6 sends latency as a native histogram (`K6_FEATURES=native-histograms`); its old ready-made `k6_http_req_duration_p95` was cumulative since k6 started and hid latency faults (found in Phase 4) |
 | Restarts in last 5 min | `increase(kube_pod_container_status_restarts_total{namespace="hotel"}[5m]) > 0` | empty |
 | Memory | Go services ≈ 6.5 MiB each, each MongoDB ≈ 60 MiB, whole `hotel` ns ≈ 600 MiB, `monitoring` ≈ 1.2 GiB |
 

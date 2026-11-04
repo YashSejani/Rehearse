@@ -7,13 +7,16 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // LogLine is one distinct log message and how often it appeared.
 type LogLine struct {
 	Text   string    `json:"text"`
 	Count  int       `json:"count"`
-	Source string    `json:"source"` // "app" (container stdout) or "event" (Kubernetes event)
+	Source string    `json:"source"` // "app" (container stdout via Loki), "event" (Kubernetes event), "crash" (previous container's log)
 	First  time.Time `json:"first"`
 	Last   time.Time `json:"last"`
 }
@@ -64,13 +67,52 @@ func (c *Collector) Logs(ctx context.Context, service string, lines int, window 
 	for i := range events {
 		events[i].Line = CompactEvent(events[i].Line)
 	}
+	// A container that just crashed is often not in Loki yet; its last words are. Read the
+	// previous container's log straight from the Kubernetes API (kubectl logs --previous).
+	crash := c.previousLogs(ctx, service)
 	merged := append(Dedup(app, "app"), Dedup(events, "event")...)
+	merged = append(merged, Dedup(crash, "crash")...)
 	sort.SliceStable(merged, func(i, j int) bool { return merged[i].Last.After(merged[j].Last) })
 	if len(merged) > lines {
 		merged = merged[:lines]
 	}
-	return &LogLines{Service: service, Window: window.String(), Raw: len(app) + len(events), Lines: merged}, nil
+	return &LogLines{Service: service, Window: window.String(), Raw: len(app) + len(events) + len(crash), Lines: merged}, nil
 }
+
+// previousLogs returns the last lines of crashed containers of the service (pods whose
+// container restarted), newest first. Errors are ignored: this is extra evidence.
+func (c *Collector) previousLogs(ctx context.Context, service string) []LogEntry {
+	if c.Kube == nil {
+		return nil
+	}
+	pods, err := c.Kube.CoreV1().Pods(c.ns()).List(ctx, metav1.ListOptions{LabelSelector: c.Cfg.App.ServiceLabel + "=" + service})
+	if err != nil {
+		return nil
+	}
+	tail := int64(30)
+	var out []LogEntry
+	for _, p := range pods.Items {
+		for _, cs := range p.Status.ContainerStatuses {
+			if cs.RestartCount == 0 || cs.LastTerminationState.Terminated == nil {
+				continue
+			}
+			raw, err := c.Kube.CoreV1().Pods(c.ns()).GetLogs(p.Name, &corev1.PodLogOptions{
+				Container: cs.Name, Previous: true, TailLines: &tail}).DoRaw(ctx)
+			if err != nil {
+				continue
+			}
+			at := cs.LastTerminationState.Terminated.FinishedAt.Time
+			for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+				if errLineRx.MatchString(line) {
+					out = append(out, LogEntry{Time: at, Line: line})
+				}
+			}
+		}
+	}
+	return out
+}
+
+var errLineRx = regexp.MustCompile(errorFilter)
 
 var (
 	ansiRx = regexp.MustCompile(`\x1b\[[0-9;]*m`)

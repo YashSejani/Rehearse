@@ -7,6 +7,9 @@ HELM         := helm --kube-context kind-$(CLUSTER_NAME)
 KPS_CHART_VERSION   := 92.17.1
 LOKI_CHART_VERSION  := 7.5.0
 ALLOY_CHART_VERSION := 1.15.0
+CHAOS_CHART_VERSION := 2.8.6
+KYVERNO_CHART_VERSION := 3.9.1
+GATE_TAG := $(shell git rev-parse --short HEAD)
 
 HOTEL_NS := hotel
 MON_NS   := monitoring
@@ -17,11 +20,11 @@ BAD_IMAGE    := yinfangchen/hotelreservation:does-not-exist
 # (The Go services use only ~6.5 MiB: a limit that low kills runc itself -> StartError, not OOMKilled.)
 OOM_LIMIT    := 24Mi
 
-.PHONY: build test help cluster delete-cluster playground hotel helm-repos monitoring loadgen status grafana \
+.PHONY: build test help cluster delete-cluster playground hotel helm-repos monitoring loadgen status grafana chaos-mesh eval rehearse-db kyverno policies gate-image gate learn ingest app2 serve mcp \
 	break-image fix-image break-oom fix-oom break-scale fix-scale
 
 help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 build: ## Build the rehearse CLI into bin/
 	go build -o bin/rehearse ./cmd/rehearse
@@ -55,8 +58,10 @@ hotel: ## Deploy HotelReservation into namespace hotel and wait until Ready
 helm-repos: ## Add the Helm chart repositories (once per machine)
 	@helm repo list 2>/dev/null | grep -q '^prometheus-community' || helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	@helm repo list 2>/dev/null | grep -q '^grafana' || helm repo add grafana https://grafana.github.io/helm-charts
+	@helm repo list 2>/dev/null | grep -q '^chaos-mesh' || helm repo add chaos-mesh https://charts.chaos-mesh.org
+	@helm repo list 2>/dev/null | grep -q '^kyverno' || helm repo add kyverno https://kyverno.github.io/kyverno/
 	@# Retry: the chart index downloads sometimes get reset on this network.
-	@for i in 1 2 3; do helm repo update prometheus-community grafana && exit 0; sleep 5; done; exit 1
+	@for i in 1 2 3; do helm repo update prometheus-community grafana chaos-mesh kyverno && exit 0; sleep 5; done; exit 1
 
 monitoring: helm-repos ## Install Prometheus/Grafana/Alertmanager, Loki and Alloy into namespace monitoring
 	$(HELM) upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
@@ -80,6 +85,66 @@ status: ## Show pods of the app and the monitoring stack
 
 grafana: ## Open Grafana on http://localhost:3000 (user admin, password rehearse); Ctrl+C to stop
 	$(KUBECTL) -n $(MON_NS) port-forward svc/kube-prometheus-stack-grafana 3000:80
+
+chaos-mesh: helm-repos ## Install Chaos Mesh (pod kill, network delay, CPU stress) for Phase 4
+	$(HELM) upgrade --install chaos-mesh chaos-mesh/chaos-mesh --version $(CHAOS_CHART_VERSION) \
+		-n chaos-mesh --create-namespace -f deploy/chaos-mesh-values.yaml --wait --timeout 10m
+
+## ---- Rehearse's own services (Phases 5-6) ---------------------------------------------
+
+rehearse-db: ## Postgres + pgvector in namespace rehearse (password Secret generated once, never committed)
+	$(KUBECTL) apply -f deploy/rehearse/namespace.yaml
+	@$(KUBECTL) -n rehearse get secret rehearse-db >/dev/null 2>&1 || \
+		$(KUBECTL) -n rehearse create secret generic rehearse-db --from-literal=password=$$(openssl rand -hex 16)
+	$(KUBECTL) apply -f deploy/rehearse/postgres.yaml
+	$(KUBECTL) -n rehearse rollout status statefulset/postgres --timeout=300s
+
+learn: build ## Learn the app's service map and baselines into Postgres
+	./bin/rehearse learn
+
+ingest: build ## Embed runbooks, docs and resolved incidents for RAG
+	./bin/rehearse knowledge ingest
+
+kyverno: helm-repos ## Install Kyverno (admission policies for the Safety Gate)
+	$(HELM) upgrade --install kyverno kyverno/kyverno --version $(KYVERNO_CHART_VERSION) \
+		-n kyverno --create-namespace -f deploy/kyverno-values.yaml --wait --timeout 10m
+
+policies: ## Apply the Safety Gate's Kyverno policies (deploy/policies)
+	$(KUBECTL) apply -f deploy/policies/
+
+gate-image: ## Build the gate image (static binary, FROM scratch) and load it into kind
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bin/gate-linux ./cmd/gate
+	docker build -q -f Dockerfile.gate -t rehearse-gate:$(GATE_TAG) .
+	kind load docker-image rehearse-gate:$(GATE_TAG) --name $(CLUSTER_NAME)
+
+gate: rehearse-db gate-image ## Deploy the Safety Gate (own ServiceAccount; token Secret generated once)
+	@$(KUBECTL) -n rehearse get secret rehearse-gate >/dev/null 2>&1 || \
+		$(KUBECTL) -n rehearse create secret generic rehearse-gate --from-literal=token=$$(openssl rand -hex 24)
+	$(KUBECTL) apply -k deploy/rehearse
+	$(KUBECTL) -n rehearse set image deployment/gate gate=rehearse-gate:$(GATE_TAG)
+	$(KUBECTL) -n rehearse rollout status deployment/gate --timeout=180s
+
+app2: ## Phase 11: deploy the second app "shop" into namespace app2 (+ its load generator)
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bin/shopdemo-linux ./cmd/shopdemo
+	docker build -q -f Dockerfile.shop -t rehearse-shop:$(GATE_TAG) .
+	kind load docker-image rehearse-shop:$(GATE_TAG) --name $(CLUSTER_NAME)
+	$(KUBECTL) apply -f deploy/app2/app.yaml --dry-run=client -o name >/dev/null
+	@$(KUBECTL) get namespace app2 >/dev/null 2>&1 || $(KUBECTL) create namespace app2
+	@$(KUBECTL) -n app2 get secret shop-db >/dev/null 2>&1 || \
+		$(KUBECTL) -n app2 create secret generic shop-db --from-literal=password=$$(openssl rand -hex 16)
+	$(KUBECTL) apply -f deploy/app2/app.yaml
+	$(KUBECTL) -n app2 set image deployment/catalog catalog=rehearse-shop:$(GATE_TAG)
+	$(KUBECTL) -n app2 set image deployment/orders orders=rehearse-shop:$(GATE_TAG)
+	$(KUBECTL) -n monitoring create configmap k6-shop --from-file=deploy/app2/k6-shop.js --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) apply -f deploy/app2/loadgen.yaml
+	$(KUBECTL) -n app2 wait --for=condition=Available deployment --all --timeout=300s
+
+serve: build ## Agent service on 172.20.0.1:8090 (needs REHEARSE_DASHBOARD_TOKEN; SLACK_WEBHOOK_URL optional)
+	./bin/rehearse serve
+
+eval: build ## Run the evaluation harness (RUNS=3 LABEL=baseline ONLY=a,b ARGS=--always-ask)
+	ml/.venv/bin/python ml/eval/run.py --runs $(or $(RUNS),3) --label $(or $(LABEL),baseline) \
+		$(if $(ONLY),--only $(ONLY)) $(if $(ARGS),--extra-args="$(ARGS)")
 
 ## ---- Faults: every break-* has a fix-* that restores the vendored spec --------------------
 # fix-* re-applies only the target's objects from deploy/hotel, so the spec comes from git.

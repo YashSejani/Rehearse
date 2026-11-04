@@ -1,0 +1,15 @@
+name: pod-failure
+description: Chaos Mesh makes the recommendation pod fail (its container is replaced by a pause image) for 10 minutes
+source: aiopslab/generators/fault/inject_symp.py (pod_failure) + generators/fault/chaos-yaml/pod-failure.yaml
+ask: recommendation
+inject:
+  - manifest: chaos/pod-failure.yaml
+wait_for: {error_endpoint: recommendations, timeout: 180}
+expected:
+  fault: true
+  targets: [recommendation]
+  categories: [unknown, resources, image, dependency]
+  actions: [RestartDeployment, None]
+cleanup:
+  - manifest_delete: chaos/pod-failure.yaml
+  - kubectl: [-n, "{ns}", delete, pod, -l, io.kompose.service=recommendation, --wait=false]

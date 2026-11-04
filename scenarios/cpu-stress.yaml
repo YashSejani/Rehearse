@@ -1,0 +1,14 @@
+name: cpu-stress
+description: Chaos Mesh burns CPU inside the geo container (2 workers at 100%), so geo is throttled at its 1-core limit
+source: ours (Chaos Mesh StressChaos; AIOpsLab has no CPU fault for HotelReservation)
+ask: geo
+inject:
+  - manifest: chaos/cpu-stress.yaml
+wait_for: {seconds: 90, timeout: 120}
+expected:
+  fault: true
+  targets: [geo]
+  categories: [resources]
+  actions: [None, RestartDeployment]
+cleanup:
+  - manifest_delete: chaos/cpu-stress.yaml

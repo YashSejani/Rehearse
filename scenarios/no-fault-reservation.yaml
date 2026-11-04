@@ -1,0 +1,12 @@
+name: no-fault-reservation
+description: nothing is broken; ask about reservation
+source: aiopslab/orchestrator/problems/no_op (noop_detection_hotel_reservation-1)
+ask: reservation
+inject: []
+wait_for: {seconds: 5, timeout: 10}
+expected:
+  fault: false
+  targets: []
+  categories: [unknown]
+  actions: [None]
+cleanup: []

@@ -1,0 +1,21 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# Ported from AIOpsLab aiopslab/generators/fault/chaos-yaml/network-delay.yaml
+# Changes: namespace hotel, 2 s latency, 10 min duration.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: rehearse-network-delay
+  namespace: hotel
+spec:
+  action: delay
+  mode: one
+  duration: "10m"
+  selector:
+    namespaces: [hotel]
+    labelSelectors:
+      io.kompose.service: search
+  delay:
+    latency: "2s"
+    correlation: "100"
+    jitter: "0ms"

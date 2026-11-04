@@ -1,0 +1,24 @@
+# Chaos Mesh (chart version pinned in the Makefile): injects pod kill, network delay and CPU
+# stress for the Phase 4 scenarios. Sized for the laptop: one controller, no dashboard, no DNS chaos.
+
+controllerManager:
+  replicaCount: 1
+  leaderElection:
+    enabled: false
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+chaosDaemon:
+  # kind nodes run containerd, not Docker.
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+dashboard:
+  create: false
+
+dnsServer:
+  create: false

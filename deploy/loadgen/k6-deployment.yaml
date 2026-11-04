@@ -23,13 +23,17 @@ spec:
               value: http://frontend.hotel.svc:5000
             - name: RATE
               value: "5"
+            - name: TARGET_NS          # tag on every metric: which copy of the app this is
+              value: hotel
             - name: K6_PROMETHEUS_RW_SERVER_URL
               value: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
             - name: K6_PROMETHEUS_RW_PUSH_INTERVAL
               value: 10s
-            # Latency is sent as ready-made percentiles: k6_http_req_duration_p95 etc. (seconds).
-            - name: K6_PROMETHEUS_RW_TREND_STATS
-              value: "p(50),p(95),p(99),avg"
+            # Latency as a native histogram (k6_http_req_duration_seconds): Prometheus computes
+            # percentiles over any window. k6's ready-made p95 is cumulative since k6 started,
+            # so a few minutes of slow requests barely move it (found in Phase 4).
+            - name: K6_FEATURES
+              value: native-histograms
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }

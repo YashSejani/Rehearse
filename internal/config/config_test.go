@@ -39,12 +39,20 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
+func TestUnknownFieldIsWarning(t *testing.T) {
+	if _, err := Parse([]byte("prometheus: {url: http://p}\nloki: {url: http://l}\nfuture_section: {a: 1}\n")); err != nil {
+		t.Errorf("unknown section should only warn: %v", err)
+	}
+	if _, err := Parse([]byte("prometheus: [not, a, map\n")); err == nil {
+		t.Error("broken YAML must still fail")
+	}
+}
+
 func TestValidate(t *testing.T) {
 	cases := map[string]string{
 		"missing backend": "loki: {url: http://l}\n",
 		"bad ref":         "prometheus: {service: monitoring-prom}\nloki: {url: http://l}\n",
 		"bad port":        "prometheus: {service: monitoring/prom:abc}\nloki: {url: http://l}\n",
-		"unknown field":   "prometheus: {url: http://p}\nloki: {url: http://l}\nbogus: 1\n",
 	}
 	for name, yml := range cases {
 		if _, err := Parse([]byte(yml)); err == nil {

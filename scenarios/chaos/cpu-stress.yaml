@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: rehearse-cpu-stress
+  namespace: hotel
+spec:
+  mode: one
+  duration: "10m"
+  selector:
+    namespaces: [hotel]
+    labelSelectors:
+      io.kompose.service: geo
+  stressors:
+    cpu:
+      workers: 2
+      load: 100

@@ -160,7 +160,7 @@ Mark one or two small, important pieces as TODO for me to write myself, and tell
 
 ---
 
-## Phase 4: Evaluation harness: measure before improving (Weeks 4–5)
+## Phase 4: Evaluation harness: measure before improving (Weeks 4–5) · DONE 2026-11-04
 
 **Goal:** A script that breaks the app in 10 known ways, runs the agent, and scores it. This is AIOpsLab's idea in our own project, and it gives the baseline every later phase must beat.
 
@@ -204,9 +204,9 @@ Phase 4 of Rehearse. Read CLAUDE.md, the Phase 4 section of docs/plan.md, docs/c
 ```
 
 **Done when:**
-- [ ] All 12 scenarios inject and clean up without leaving the app broken.
-- [ ] You have a baseline table, e.g. "base model: 6/10 causes correct, 1 false alarm".
-- [ ] You looked at the worst failure's trace and wrote down why it failed.
+- [x] All 12 scenarios inject and clean up without leaving the app broken.
+- [x] You have a baseline table, e.g. "base model: 6/10 causes correct, 1 false alarm".
+- [x] You looked at the worst failure's trace and wrote down why it failed.
 
 ---
 

@@ -1,0 +1,14 @@
+name: network-delay
+description: Chaos Mesh adds 2 s of network delay to the search pod
+source: aiopslab/generators/fault/inject_symp.py (network_delay) + generators/fault/chaos-yaml/network-delay.yaml
+ask: search
+inject:
+  - manifest: chaos/network-delay.yaml
+wait_for: {p95_ms_endpoint: hotels, min_p95_ms: 1000, timeout: 180}
+expected:
+  fault: true
+  targets: [search]
+  categories: [network]
+  actions: [None]
+cleanup:
+  - manifest_delete: chaos/network-delay.yaml

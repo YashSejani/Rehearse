@@ -47,7 +47,8 @@ func (c *Collector) Metrics(ctx context.Context, service string, window time.Dur
 	m := &ServiceMetrics{Service: service, Window: window.String()}
 
 	if eps := c.Cfg.App.Endpoints[service]; len(eps) > 0 {
-		sel := fmt.Sprintf(`endpoint=~%q`, strings.Join(eps, "|"))
+		// target_ns separates the real app's traffic from a sandbox's (k6 tag).
+		sel := fmt.Sprintf(`endpoint=~%q, target_ns=%q`, strings.Join(eps, "|"), ns)
 		rates, err := c.byEndpoint(ctx, fmt.Sprintf(`sum by (endpoint) (rate(k6_http_reqs_total{%s}[%s]))`, sel, w))
 		if err != nil {
 			return nil, err
@@ -56,7 +57,8 @@ func (c *Collector) Metrics(ctx context.Context, service string, window time.Dur
 		if err != nil {
 			return nil, err
 		}
-		p95, err := c.byEndpoint(ctx, fmt.Sprintf(`max by (endpoint) (max_over_time(k6_http_req_duration_p95{%s}[%s]))`, sel, w))
+		// k6 sends latency as a native histogram, so the percentile covers exactly this window.
+		p95, err := c.byEndpoint(ctx, fmt.Sprintf(`histogram_quantile(0.95, sum by (endpoint) (rate(k6_http_req_duration_seconds{%s}[%s])))`, sel, w))
 		if err != nil {
 			return nil, err
 		}

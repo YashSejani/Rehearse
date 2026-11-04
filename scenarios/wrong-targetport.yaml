@@ -1,0 +1,14 @@
+name: wrong-targetport
+description: the frontend Service sends traffic to port 5999 instead of 5000; every request fails
+source: aiopslab/generators/fault/inject_virtual.py (misconfig_k8s, wrong Service targetPort)
+ask: frontend
+inject:
+  - kubectl: [-n, "{ns}", patch, service, frontend, --type=json, "-p", '[{"op":"replace","path":"/spec/ports/0/targetPort","value":5999}]']
+wait_for: {error_endpoint: hotels, timeout: 120}
+expected:
+  fault: true
+  targets: [frontend]
+  categories: [network, config]
+  actions: [None]
+cleanup:
+  - kubectl: [apply, -k, deploy/hotel, -l, io.kompose.service=frontend]

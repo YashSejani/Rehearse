@@ -1,0 +1,15 @@
+name: failing-readiness
+description: frontend gets a readiness probe on a path that returns 404, so the Service has no endpoints
+source: ours
+ask: frontend
+inject:
+  - kubectl: [-n, "{ns}", patch, deployment, frontend, --type=json, "-p", '[{"op":"add","path":"/spec/template/spec/containers/0/readinessProbe","value":{"httpGet":{"path":"/healthz","port":5000},"periodSeconds":5,"failureThreshold":2}}]']
+wait_for: {error_endpoint: hotels, issue: [NotReady, Unavailable], timeout: 240}
+expected:
+  fault: true
+  targets: [frontend]
+  categories: [config]
+  actions: [RollbackDeploy]
+cleanup:
+  - kubectl: [-n, "{ns}", patch, deployment, frontend, --type=json, "-p", '[{"op":"remove","path":"/spec/template/spec/containers/0/readinessProbe"}]']
+  - kubectl: [apply, -k, deploy/hotel, -l, io.kompose.service=frontend]

@@ -1,0 +1,14 @@
+name: oom-low-limit
+description: mongodb-profile gets a 24Mi memory limit and is OOM-killed in a loop
+source: ours (Phase 1 break-oom)
+ask: mongodb-profile
+inject:
+  - make: break-oom
+wait_for: {issue: [OOMKilled, Killed], timeout: 180}
+expected:
+  fault: true
+  targets: [mongodb-profile]
+  categories: [resources]
+  actions: [PatchMemoryLimit, RollbackDeploy]
+cleanup:
+  - make: fix-oom

@@ -1,0 +1,16 @@
+name: db-auth-revoked
+description: the admin user loses readWrite on geo-db; geo restarts and cannot load its data
+source: aiopslab/generators/fault/inject_app.py (revoke_auth) + generators/fault/script/revoke-admin-geo-mongo.sh
+ask: geo
+inject:
+  - exec: {selector: io.kompose.service=mongodb-geo, script: /scripts/revoke-admin-geo-mongo.sh}
+  - kubectl: [-n, "{ns}", delete, pod, -l, io.kompose.service=geo, --wait=false]
+wait_for: {issue: [CrashLoopBackOff, Error, NotReady, Unavailable], error_endpoint: hotels, timeout: 240}
+expected:
+  fault: true
+  targets: [geo, mongodb-geo]
+  categories: [dependency, config]
+  actions: [None, RestartDeployment]
+cleanup:
+  - exec: {selector: io.kompose.service=mongodb-geo, script: /scripts/revoke-mitigate-admin-geo-mongo.sh}
+  - kubectl: [-n, "{ns}", delete, pod, -l, io.kompose.service=geo, --wait=false]

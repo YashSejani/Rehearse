@@ -1,0 +1,17 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# Ported from AIOpsLab aiopslab/generators/fault/chaos-yaml/pod-failure.yaml
+# Changes: namespace hotel, target recommendation, fixed duration.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: rehearse-pod-failure
+  namespace: hotel
+spec:
+  action: pod-failure
+  mode: one
+  duration: "10m"
+  selector:
+    namespaces: [hotel]
+    labelSelectors:
+      io.kompose.service: recommendation

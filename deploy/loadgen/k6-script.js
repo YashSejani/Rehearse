@@ -6,6 +6,10 @@ import http from 'k6/http';
 
 const BASE = __ENV.TARGET || 'http://frontend.hotel.svc:5000';
 const RATE = parseInt(__ENV.RATE || '5', 10);
+// Which copy of the app this traffic is for (hotel, or a rehearse-sbx-* sandbox). Every
+// metric carries it, so the collector never mixes a sandbox's numbers with the real app's.
+const NS = __ENV.TARGET_NS || 'hotel';
+const tag = (endpoint) => ({ tags: { endpoint, target_ns: NS } });
 
 export const options = {
   scenarios: {
@@ -21,6 +25,9 @@ export const options = {
   // Keep label count small in Prometheus: no full URL per request.
   systemTags: ['status', 'method', 'expected_response', 'error_code', 'scenario'],
   discardResponseBodies: true,
+  // A new TCP connection per request, like many real users. With keep-alive, a broken
+  // Service (wrong targetPort) went unnoticed: old connections kept the old route.
+  noConnectionReuse: true,
 };
 
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -38,19 +45,19 @@ function hotels() {
   const inD = rand(9, 23);
   const outD = rand(inD + 1, 24);
   http.get(`${BASE}/hotels?inDate=${day(inD)}&outDate=${day(outD)}&lat=${lat()}&lon=${lon()}`,
-    { tags: { endpoint: 'hotels' } });
+    tag('hotels'));
 }
 
 function recommendations() {
   const req = ['dis', 'rate', 'price'][rand(0, 2)];
   http.get(`${BASE}/recommendations?require=${req}&lat=${lat()}&lon=${lon()}`,
-    { tags: { endpoint: 'recommendations' } });
+    tag('recommendations'));
 }
 
 function login() {
   const u = user();
   http.post(`${BASE}/user?username=${u.name}&password=${u.pass}`, null,
-    { tags: { endpoint: 'user' } });
+    tag('user'));
 }
 
 function reservation() {
@@ -60,7 +67,7 @@ function reservation() {
   http.post(`${BASE}/reservation?inDate=${day(inD)}&outDate=${day(outD)}` +
     `&hotelId=${rand(1, 80)}&customerName=${u.name}&username=${u.name}` +
     `&password=${u.pass}&number=1`, null,
-    { tags: { endpoint: 'reservation' } });
+    tag('reservation'));
 }
 
 // Mix: 40% search, 30% recommendations, 15% login, 15% reservation.

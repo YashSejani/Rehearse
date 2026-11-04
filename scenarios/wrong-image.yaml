@@ -1,0 +1,14 @@
+name: wrong-image
+description: geo is updated to an image tag that does not exist (ImagePullBackOff)
+source: aiopslab/generators/fault/inject_app.py (misconfig_app, buggy image) + Phase 1 break-image
+ask: geo
+inject:
+  - make: break-image
+wait_for: {issue: [ImagePullBackOff, ErrImagePull], timeout: 180}
+expected:
+  fault: true
+  targets: [geo]
+  categories: [image]
+  actions: [RollbackDeploy, FixImage]
+cleanup:
+  - make: fix-image

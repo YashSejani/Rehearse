@@ -1,0 +1,14 @@
+name: replicas-zero
+description: user is scaled to 0 replicas; login and reservation fail
+source: aiopslab/generators/fault/inject_virtual.py (scale_pods_to_zero) + Phase 1 break-scale
+ask: user
+inject:
+  - make: break-scale
+wait_for: {issue: [ScaledToZero], error_endpoint: user, timeout: 180}
+expected:
+  fault: true
+  targets: [user]
+  categories: [scaling]
+  actions: [ScaleReplicas, RollbackDeploy]
+cleanup:
+  - make: fix-scale

@@ -21,7 +21,7 @@ func TestMetrics(t *testing.T) {
 	fb := &fakeBackend{rules: []rule{
 		{`expected_response="false"`, vec2("user", "0.8", "reservation", "0.2")},
 		{"rate(k6_http_reqs_total", vec2("user", "0.8", "reservation", "0.8")},
-		{"k6_http_req_duration_p95", vec2("user", "0.0042", "reservation", "0.0071")},
+		{"k6_http_req_duration_seconds", vec2("user", "0.0042", "reservation", "0.0071")},
 		{"kube_deployment_spec_replicas", vec(`"deployment":"user"`, "1")},
 		{"kube_deployment_status_replicas_available", vec(`"deployment":"user"`, "0")},
 		{"restarts_total", vec("", "3")},

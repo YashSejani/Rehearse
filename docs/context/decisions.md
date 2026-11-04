@@ -28,9 +28,12 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · Triage before AI:** `rehearse why` on a target that passes the deterministic health check answers "nothing wrong" without the model (`agent.always_ask_model: false`). The model alone false-alarmed on a just-recovered app. `--always-ask` measures the model's own false alarms.
 - **2026-11-04 · Facts cover the recent past only** (logs/events 10 min, metrics 2 min, last 3 rollouts), plus a computed `CURRENT STATE` line.
 - **2026-11-04 · Answer validation is strict:** evidence must appear in the facts (70% word match); FixImage image must appear in the facts and not be `:latest`; unknown params dropped; one retry in JSON mode, then fallback unknown/None.
+- **2026-11-04 · Python for ml/ = uv 0.13.5** (official GitHub release binary, sha256 checked, `~/.local/bin`, no sudo) managing Python 3.12.15 in `ml/.venv`. Not in Ubuntu apt.
+- **2026-11-04 · k6 latency as native histograms** (`K6_FEATURES=native-histograms`) and **no keep-alive** (`noConnectionReuse`): the cumulative p95 and reused connections hid network-delay and wrong-targetport. Every k6 metric carries `target_ns` (hotel, app2 or a sandbox).
+- **2026-11-04 · Baseline = rehearse-base, no RAG, 3 runs × 12 scenarios:** 7/30 fault runs fully correct, 0/6 false alarms with triage, 5/6 without. Later phases are judged against this.
+- **2026-11-04 · Collector reads `logs --previous` of crashed containers** (after the db-auth-revoked failure analysis). Phase 5 measures RAG and no-RAG both with this collector.
 
 ## Open (decide in the phase named)
 
-- **Phase 4 · Python 3.11/3.12 for ML and AIOpsLab.** System Python is 3.14. Options: `uv` (manages Python versions per project, no sudo) or the deadsnakes PPA. Recommended: `uv`.
 - **Phase 7 · vCluster or temporary namespace for the sandbox.** Measure RAM after Phases 1–6; fall back to a namespace if the laptop is short.
 - **Phase 11 · Second app.** Light option (own Go API + Postgres) is safer on 14 GiB RAM than the OpenTelemetry Astronomy Shop.

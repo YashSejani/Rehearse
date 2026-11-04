@@ -13,12 +13,46 @@ import (
 )
 
 type Config struct {
-	Kube       Kube    `json:"kube"`
-	App        App     `json:"app"`
-	Prometheus Backend `json:"prometheus"`
-	Loki       Loki    `json:"loki"`
-	Limits     Limits  `json:"limits"`
-	Agent      Agent   `json:"agent"`
+	Kube       Kube      `json:"kube"`
+	App        App       `json:"app"`
+	Prometheus Backend   `json:"prometheus"`
+	Loki       Loki      `json:"loki"`
+	Limits     Limits    `json:"limits"`
+	Agent      Agent     `json:"agent"`
+	Jaeger     Backend   `json:"jaeger"`
+	Knowledge  Knowledge `json:"knowledge"`
+	Gate       Gate      `json:"gate"`
+}
+
+// Gate is where the Safety Gate (Phase 6) runs and how to authenticate to it.
+type Gate struct {
+	Backend     `json:",inline"`
+	TokenSecret string `json:"token_secret"` // namespace/name of the Secret with key "token"
+	// Sandbox settings (Phase 7).
+	Sandbox Sandbox `json:"sandbox"`
+}
+
+type Sandbox struct {
+	Enabled bool   `json:"enabled"`
+	Mode    string `json:"mode"`    // namespace (vCluster needs more RAM; see decisions.md)
+	Timeout int    `json:"timeout"` // seconds to wait for the copy to become healthy
+	// One HTTP request that must succeed against the copy after the fix.
+	SmokeService string `json:"smoke_service"`
+	SmokePort    int    `json:"smoke_port"`
+	SmokePath    string `json:"smoke_path"`
+}
+
+// Knowledge is App Knowledge (Phase 5): Postgres + pgvector and the RAG settings.
+type Knowledge struct {
+	// DSN connects directly (e.g. inside the cluster). If empty, the CLI port-forwards to
+	// Service and reads the password from Secret ("namespace/name", key "password").
+	DSN        string   `json:"dsn"`
+	Service    string   `json:"service"`
+	Secret     string   `json:"secret"`
+	EmbedModel string   `json:"embed_model"`
+	TopK       int      `json:"top_k"`
+	RAG        bool     `json:"rag"`
+	Sources    []string `json:"sources"` // files/dirs ingested by `rehearse knowledge ingest`
 }
 
 type Kube struct {
@@ -78,7 +112,13 @@ func Load(path string) (*Config, error) {
 func Parse(data []byte) (*Config, error) {
 	c := Default()
 	if err := yaml.UnmarshalStrict(data, c); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
+		// Unknown keys (e.g. a section added by a newer version) are a warning, not a
+		// failure, so a running older binary keeps working. Real syntax errors still fail.
+		c = Default()
+		if err2 := yaml.Unmarshal(data, c); err2 != nil {
+			return nil, fmt.Errorf("parse config: %w", err2)
+		}
+		fmt.Fprintf(os.Stderr, "warning: config: %v\n", err)
 	}
 	c.fillDefaults()
 	if err := c.Validate(); err != nil {
@@ -126,6 +166,30 @@ func (c *Config) fillDefaults() {
 	}
 	if c.Agent.MaxTokens <= 0 {
 		c.Agent.MaxTokens = 512
+	}
+	if c.Knowledge.EmbedModel == "" {
+		c.Knowledge.EmbedModel = "nomic-embed-text"
+	}
+	if c.Knowledge.TopK <= 0 {
+		c.Knowledge.TopK = 5
+	}
+	if c.Knowledge.Service == "" {
+		c.Knowledge.Service = "rehearse/postgres:5432"
+	}
+	if c.Knowledge.Secret == "" {
+		c.Knowledge.Secret = "rehearse/rehearse-db"
+	}
+	if c.Gate.Service == "" && c.Gate.URL == "" {
+		c.Gate.Service = "rehearse/gate:8080"
+	}
+	if c.Gate.TokenSecret == "" {
+		c.Gate.TokenSecret = "rehearse/rehearse-gate"
+	}
+	if c.Gate.Sandbox.Mode == "" {
+		c.Gate.Sandbox.Mode = "namespace"
+	}
+	if c.Gate.Sandbox.Timeout <= 0 {
+		c.Gate.Sandbox.Timeout = 180
 	}
 	if c.Agent.TraceDir == "" {
 		c.Agent.TraceDir = "traces"
