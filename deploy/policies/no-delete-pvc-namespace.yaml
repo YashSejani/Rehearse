@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rehearse-no-delete-pvc-namespace
+  annotations:
+    policies.kyverno.io/description: The Safety Gate may never delete a PersistentVolumeClaim or a Namespace (data loss).
+spec:
+  background: false
+  rules:
+    - name: deny-delete
+      match:
+        any:
+          - resources:
+              kinds: [PersistentVolumeClaim, Namespace]
+              operations: [DELETE]
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      exclude:
+        any:
+          # Phase 7 sandboxes are temporary namespaces the gate itself creates and must clean up.
+          - resources:
+              kinds: [Namespace]
+              names: ["rehearse-sbx-*"]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: deleting PVCs or namespaces is not allowed"
+        deny: {}

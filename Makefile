@@ -9,7 +9,8 @@ LOKI_CHART_VERSION  := 7.5.0
 ALLOY_CHART_VERSION := 1.15.0
 CHAOS_CHART_VERSION := 2.8.6
 KYVERNO_CHART_VERSION := 3.9.1
-GATE_TAG := $(shell git rev-parse --short HEAD)
+# Commit hash; uncommitted builds get a unique suffix so Kubernetes really rolls the new image.
+GATE_TAG := $(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- cmd internal || echo -dev-$$(date +%s))
 
 HOTEL_NS := hotel
 MON_NS   := monitoring

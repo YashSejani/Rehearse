@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rehearse-max-memory-limit
+  annotations:
+    policies.kyverno.io/description: The Safety Gate may not set a memory limit above 2Gi (the laptop has ~14 GiB).
+spec:
+  background: false
+  rules:
+    - name: memory-limit-at-most-2gi
+      match:
+        any:
+          - resources: {kinds: [Deployment]}
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: memory limit must be at most 2Gi"
+        pattern:
+          spec:
+            template:
+              spec:
+                containers:
+                  - =(resources):
+                      =(limits):
+                        =(memory): "<=2Gi"

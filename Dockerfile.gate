@@ -1,0 +1,6 @@
+# Safety Gate image. The binary is built on the host (make gate-image) as a static Go
+# binary, so the image needs no OS at all: nothing to patch, nothing to exploit.
+FROM scratch
+COPY bin/gate-linux /gate
+USER 65532:65532
+ENTRYPOINT ["/gate"]

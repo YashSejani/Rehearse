@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rehearse-disallow-latest-tag
+  annotations:
+    policies.kyverno.io/description: Images set by the Safety Gate need a pinned tag or digest, never latest.
+spec:
+  background: false
+  rules:
+    - name: pinned-images
+      match:
+        any:
+          - resources: {kinds: [Deployment]}
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: image must have a pinned tag or digest and must not be :latest"
+        foreach:
+          - list: "request.object.spec.template.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ contains(element.image, ':') || contains(element.image, '@sha256:') }}"
+                    operator: Equals
+                    value: false

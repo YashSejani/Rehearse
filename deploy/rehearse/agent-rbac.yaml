@@ -1,0 +1,46 @@
+# The agent's identity: READ-ONLY. Used when the agent runs inside the cluster (Phase 10).
+# It can look at the app and query Prometheus/Loki through the API proxy, and nothing else.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rehearse-agent
+  namespace: rehearse
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rehearse-agent-read
+  namespace: hotel
+rules:
+  - apiGroups: ["", apps]
+    resources: [pods, services, events, deployments, replicasets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rehearse-agent-read
+  namespace: hotel
+subjects:
+  - {kind: ServiceAccount, name: rehearse-agent, namespace: rehearse}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: rehearse-agent-read}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rehearse-agent-proxy
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: [services/proxy]
+    resourceNames: ["kube-prometheus-stack-prometheus:9090", "loki:3100"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rehearse-agent-proxy
+  namespace: monitoring
+subjects:
+  - {kind: ServiceAccount, name: rehearse-agent, namespace: rehearse}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: rehearse-agent-proxy}

@@ -243,3 +243,31 @@ func TestRetryUsesJSONMode(t *testing.T) {
 		t.Errorf("retry should force JSON mode without tools: %+v", model.reqs[1])
 	}
 }
+
+func TestCutOffAnswerRetriesShorter(t *testing.T) {
+	cut := &scriptedLLM{replies: []llm.Message{text(`{"root_cause": "x", "evidence": ["a", "b", "c", "d"`), text(oomAnswer)}}
+	model := &cutLLM{inner: cut}
+	res := (&Agent{LLM: model, Tools: oomTools(), Model: "m", MaxSteps: 8}).Diagnose(context.Background(), "profile")
+	if !res.Valid {
+		t.Fatalf("retry after cut-off should succeed: %s", res.Error)
+	}
+	last := cut.reqs[1].Messages[len(cut.reqs[1].Messages)-1].Content
+	if !strings.Contains(last, "cut off") || !strings.Contains(last, "at most 3") {
+		t.Errorf("retry message: %q", last)
+	}
+}
+
+// cutLLM marks the first reply as truncated (finish_reason "length").
+type cutLLM struct {
+	inner *scriptedLLM
+	n     int
+}
+
+func (c *cutLLM) Chat(ctx context.Context, req llm.Request) (*llm.Response, error) {
+	r, err := c.inner.Chat(ctx, req)
+	if err == nil && c.n == 0 {
+		r.FinishReason = "length"
+	}
+	c.n++
+	return r, err
+}

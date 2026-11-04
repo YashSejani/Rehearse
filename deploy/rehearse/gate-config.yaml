@@ -1,0 +1,30 @@
+# Config of the in-cluster Safety Gate: same format as the repo's config.yaml, but the
+# backends are reached directly by cluster DNS (no API proxy needed inside the cluster).
+kube:
+  context: ""
+app:
+  namespace: hotel
+  service_label: io.kompose.service
+  endpoints:
+    frontend: [hotels, recommendations, user, reservation]
+    search: [hotels]
+    geo: [hotels]
+    rate: [hotels]
+    profile: [hotels]
+    recommendation: [recommendations]
+    user: [user, reservation]
+    reservation: [reservation]
+prometheus:
+  url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+loki:
+  url: http://loki.monitoring.svc:3100
+limits:
+  timeout_seconds: 15
+gate:
+  sandbox:
+    enabled: true
+    mode: namespace
+    timeout: 180
+    smoke_service: frontend
+    smoke_port: 5000
+    smoke_path: /hotels?inDate=2015-04-09&outDate=2015-04-10&lat=38.0235&lon=-122.095

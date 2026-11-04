@@ -37,6 +37,7 @@ type Agent struct {
 type Result struct {
 	Answer           *Answer       `json:"answer"`
 	Valid            bool          `json:"valid"`   // false: model output never validated, Answer is the fallback
+	RAG              bool          `json:"rag"`     // reference data from the knowledge base was added
 	Triaged          bool          `json:"triaged"` // true: healthy by the deterministic check, model not called
 	Steps            int           `json:"steps"`   // model calls
 	ToolCalls        int           `json:"tool_calls"`
@@ -155,13 +156,30 @@ func (a *Agent) Diagnose(ctx context.Context, target string) *Result {
 		}
 		// One retry, telling the model exactly what was wrong.
 		retried = true
+		why := "Your answer was rejected: " + err.Error() + "."
+		if resp.FinishReason == "length" {
+			why = "Your answer was cut off because it was too long."
+		}
 		msgs = append(msgs,
 			llm.Message{Role: "assistant", Content: msg.Content},
-			llm.Message{Role: "user", Content: "Your answer was rejected: " + err.Error() + ". Reply again with ONLY the corrected JSON object."})
+			llm.Message{Role: "user", Content: why + " Reply again with ONLY the corrected JSON object, with at most 3 short evidence lines."})
 	}
 	res.Error = "step limit reached"
 	res.Answer = Fallback(target, "step limit reached")
 	return res
+}
+
+// Prompt returns the exact messages the model sees first for these facts (system prompt,
+// optional reference block, user prompt). The Phase 8 data generator stores these as the
+// input of each training example, so training and use see the same text.
+func (a *Agent) Prompt(ctx context.Context, facts *Facts) []llm.Message {
+	msgs := []llm.Message{{Role: "system", Content: SystemPrompt}}
+	if a.Context != nil {
+		if ref := a.Context(ctx, facts); ref != "" {
+			msgs = append(msgs, llm.Message{Role: "user", Content: ref})
+		}
+	}
+	return append(msgs, llm.Message{Role: "user", Content: userPrompt(facts.Target, facts.Render())})
 }
 
 // Summary is a short human-readable view of a result.

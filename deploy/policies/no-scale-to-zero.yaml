@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rehearse-no-scale-to-zero
+  annotations:
+    policies.kyverno.io/description: The Safety Gate may never scale a deployment to 0 replicas.
+spec:
+  background: false
+  rules:
+    - name: replicas-at-least-one
+      match:
+        any:
+          - resources: {kinds: [Deployment]}
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: replicas must be at least 1 (no scale to zero)"
+        pattern:
+          spec:
+            replicas: ">=1"

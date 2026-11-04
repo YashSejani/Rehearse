@@ -165,7 +165,7 @@ func (c *Config) fillDefaults() {
 		c.Agent.MaxSteps = 8
 	}
 	if c.Agent.MaxTokens <= 0 {
-		c.Agent.MaxTokens = 512
+		c.Agent.MaxTokens = 768
 	}
 	if c.Knowledge.EmbedModel == "" {
 		c.Knowledge.EmbedModel = "nomic-embed-text"

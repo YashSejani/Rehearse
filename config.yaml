@@ -26,6 +26,9 @@ loki:
   service: monitoring/loki:3100
   events_selector: '{job="kubernetes-events"}'
 
+jaeger:
+  service: hotel/jaeger:16686   # traces; used by `rehearse learn` for the service map
+
 limits:
   log_lines: 20        # max distinct (deduplicated) log lines returned
   issues: 20           # max problems returned by status
@@ -38,6 +41,20 @@ agent:
   model: rehearse-base       # qwen2.5:3b with num_ctx 8192 (deploy/ollama/Modelfile.base)
   max_steps: 8
   temperature: 0
-  max_tokens: 512            # per reply; a looping model is cut off (~2 min on CPU)
+  max_tokens: 768            # per reply; a looping model is cut off (~3 min on CPU)
   trace_dir: traces
   always_ask_model: false   # false = triage: a healthy target is answered without the model
+
+# App Knowledge + RAG (Phase 5). Postgres runs in namespace rehearse (deploy/rehearse/).
+knowledge:
+  service: rehearse/postgres:5432
+  secret: rehearse/rehearse-db   # password key; created by `make rehearse-db`, never committed
+  embed_model: nomic-embed-text
+  top_k: 5
+  rag: true                      # rehearse why --no-rag turns it off
+  sources: [knowledge/runbooks, README-FIRST.md, docs/context/hotelreservation.md]
+
+# Safety Gate (Phase 6): a separate service, the only thing that writes to the cluster.
+gate:
+  service: rehearse/gate:8080
+  token_secret: rehearse/rehearse-gate   # created by `make gate`, never committed

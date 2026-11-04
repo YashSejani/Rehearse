@@ -244,7 +244,7 @@ Phase 5 of Rehearse. Read CLAUDE.md, the Phase 5 section of docs/plan.md, docs/0
 
 ---
 
-## Phase 6: Safety Gate: nothing unsafe reaches the app (Weeks 6–7)
+## Phase 6: Safety Gate: nothing unsafe reaches the app (Weeks 6–7) · DONE 2026-11-04
 
 **Goal:** A separate service that turns a typed action into a change, dry-runs it, checks policies, asks you, applies it, watches metrics and undoes it if things get worse.
 
@@ -270,13 +270,13 @@ Phase 6 of Rehearse. Read CLAUDE.md, the Phase 6 section of docs/plan.md, docs/0
 ```
 
 **Done when:**
-- [ ] A correct fix applies after approval and the app recovers.
-- [ ] A bad fix you force on purpose is auto-undone within 2 minutes.
-- [ ] Scale-to-0 and the poisoned-log test are both blocked, and the audit log shows why.
+- [x] A correct fix applies after approval and the app recovers.
+- [x] A bad fix you force on purpose is auto-undone within 2 minutes.
+- [x] Scale-to-0 and the poisoned-log test are both blocked, and the audit log shows why.
 
 ---
 
-## Phase 7: Sandbox rehearsal: test the fix on a copy (Week 8)
+## Phase 7: Sandbox rehearsal: test the fix on a copy (Week 8) · DONE 2026-11-04
 
 **Goal:** Before asking for approval, the gate copies the app into a sandbox, reproduces the fault, applies the fix there, and reports whether the copy became healthy.
 
@@ -302,9 +302,9 @@ Phase 7 of Rehearse. Read CLAUDE.md, the Phase 7 section of docs/plan.md, docs/0
 ```
 
 **Done when:**
-- [ ] A good fix shows "rehearsed: healthy" before you approve it.
-- [ ] A wrong fix is caught in the sandbox and never reaches the real app.
-- [ ] No sandbox is left behind after 5 runs (`vcluster list` is empty).
+- [x] A good fix shows "rehearsed: healthy" before you approve it.
+- [x] A wrong fix is caught in the sandbox and never reaches the real app.
+- [x] No sandbox is left behind after 5 runs (`vcluster list` is empty).
 
 ---
 

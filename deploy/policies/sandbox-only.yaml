@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rehearse-sandbox-only
+  annotations:
+    policies.kyverno.io/description: >-
+      The Safety Gate may create namespaces, and RoleBindings, only for sandboxes named
+      rehearse-sbx-*. Without this, its sandbox rights could be used to grant itself more.
+spec:
+  background: false
+  rules:
+    - name: sandbox-namespaces-only
+      match:
+        any:
+          - resources: {kinds: [Namespace], operations: [CREATE]}
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: the gate may only create namespaces named rehearse-sbx-*"
+        pattern:
+          metadata:
+            name: "rehearse-sbx-*"
+    - name: rolebindings-in-sandboxes-only
+      match:
+        any:
+          - resources: {kinds: [RoleBinding], operations: [CREATE]}
+            subjects: [{kind: ServiceAccount, name: rehearse-gate, namespace: rehearse}]
+      validate:
+        failureAction: Enforce
+        message: "rehearse policy: the gate may only create RoleBindings inside rehearse-sbx-* namespaces"
+        pattern:
+          metadata:
+            namespace: "rehearse-sbx-*"

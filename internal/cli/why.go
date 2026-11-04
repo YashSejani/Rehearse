@@ -32,7 +32,7 @@ func (f *rootFlags) newAgent(target string, trace bool) (*agent.Agent, func(), e
 	a := &agent.Agent{
 		LLM:         llm.New(cfg.Agent.BaseURL, os.Getenv("REHEARSE_LLM_API_KEY")),
 		Tools:       c,
-		Model:       cfg.Agent.Model,
+		Model:       nonEmptyStr(f.model, cfg.Agent.Model),
 		MaxSteps:    cfg.Agent.MaxSteps,
 		Temperature: cfg.Agent.Temperature,
 		MaxTokens:   cfg.Agent.MaxTokens,
@@ -52,7 +52,7 @@ func (f *rootFlags) newAgent(target string, trace bool) (*agent.Agent, func(), e
 }
 
 func newWhyCmd(f *rootFlags) *cobra.Command {
-	var asJSON, dumpFacts, noTrace bool
+	var asJSON, dumpFacts, dumpPrompt, noTrace, noRAG bool
 	cmd := &cobra.Command{
 		Use:   "why deploy/<name>",
 		Short: "Diagnose a deployment with the AI agent: root cause, evidence, confidence, one typed fix",
@@ -63,6 +63,15 @@ func newWhyCmd(f *rootFlags) *cobra.Command {
 				return err
 			}
 			out := cmd.OutOrStdout()
+			if dumpPrompt {
+				c, err := f.collector()
+				if err != nil {
+					return err
+				}
+				facts := agent.GatherFacts(cmd.Context(), c, target)
+				a := &agent.Agent{}
+				return printJSON(out, map[string]any{"messages": a.Prompt(cmd.Context(), facts), "facts": facts, "healthy": facts.Healthy()})
+			}
 			if dumpFacts {
 				c, err := f.collector()
 				if err != nil {
@@ -81,7 +90,18 @@ func newWhyCmd(f *rootFlags) *cobra.Command {
 				return err
 			}
 			defer done()
+			cfg, _ := f.load()
+			if cfg.Knowledge.RAG && !noRAG {
+				hook, stop, err := f.ragContext(cmd.Context(), cfg)
+				if err != nil {
+					fmt.Fprintln(cmd.ErrOrStderr(), "warning: RAG off:", err)
+				} else {
+					defer stop()
+					a.Context = hook
+				}
+			}
 			res := a.Diagnose(cmd.Context(), target)
+			res.RAG = a.Context != nil
 			if asJSON || f.json() {
 				return printJSON(out, res)
 			}
@@ -91,7 +111,10 @@ func newWhyCmd(f *rootFlags) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the full result as JSON")
 	cmd.Flags().BoolVar(&dumpFacts, "dump-facts", false, "only print the facts the agent would see (no model call)")
+	cmd.Flags().BoolVar(&dumpPrompt, "dump-prompt", false, "print the exact model input (system + user messages) as JSON, no model call")
 	cmd.Flags().BoolVar(&noTrace, "no-trace", false, "do not write a trace file")
+	cmd.Flags().BoolVar(&noRAG, "no-rag", false, "do not add runbooks, past incidents and the service map")
+	cmd.Flags().StringVar(&f.model, "model", "", "model name (overrides agent.model), e.g. rehearse-hotel")
 	cmd.Flags().BoolVar(&f.alwaysAsk, "always-ask", false, "ask the model even when the health check passes")
 	return cmd
 }

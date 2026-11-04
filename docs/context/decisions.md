@@ -32,8 +32,12 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · k6 latency as native histograms** (`K6_FEATURES=native-histograms`) and **no keep-alive** (`noConnectionReuse`): the cumulative p95 and reused connections hid network-delay and wrong-targetport. Every k6 metric carries `target_ns` (hotel, app2 or a sandbox).
 - **2026-11-04 · Baseline = rehearse-base, no RAG, 3 runs × 12 scenarios:** 7/30 fault runs fully correct, 0/6 false alarms with triage, 5/6 without. Later phases are judged against this.
 - **2026-11-04 · Collector reads `logs --previous` of crashed containers** (after the db-auth-revoked failure analysis). Phase 5 measures RAG and no-RAG both with this collector.
+- **2026-11-04 · Sandbox = temporary namespace `rehearse-sbx-<id>`, not vCluster.** Measured ~10 of 14 GiB used with Phases 1–6 (≈4 GiB free); a vCluster control plane plus a 19-pod copy does not fit reliably. The copy has its own Consul, so it is isolated by namespace DNS. Data (Mongo) is not copied: data faults show "not rehearsed (fault did not reproduce)".
+- **2026-11-04 · The gate gets sandbox rights only inside each sandbox** (RoleBinding to `rehearse-sandbox-admin` created per sandbox); Kyverno `rehearse-sandbox-only` limits the gate to creating namespaces/RoleBindings named `rehearse-sbx-*`; `no-delete-pvc-namespace` excludes only those.
+- **2026-11-04 · Gate proposals are asynchronous** (`checking` → `awaiting_approval`/`blocked`): rehearsals take minutes and the API proxy cuts requests at 30 s.
+- **2026-11-04 · Gate image `FROM scratch`**, static binary, non-root, read-only FS; tag = git commit (dirty builds `-dev-<time>`). Kyverno chart 3.9.1 (one behind newest), only the admission controller.
+- **2026-11-04 · Agent prompt asks for 1–3 short evidence quotes, max_tokens 768** (a correct answer was cut off at 512 tokens).
 
 ## Open (decide in the phase named)
 
-- **Phase 7 · vCluster or temporary namespace for the sandbox.** Measure RAM after Phases 1–6; fall back to a namespace if the laptop is short.
 - **Phase 11 · Second app.** Light option (own Go API + Postgres) is safer on 14 GiB RAM than the OpenTelemetry Astronomy Shop.

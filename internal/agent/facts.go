@@ -214,6 +214,26 @@ func (f *Facts) HealthLine() string {
 	return "PROBLEM: " + strings.Join(why, ", ")
 }
 
+// Symptoms are the short problem descriptions used as the RAG search query.
+func (f *Facts) Symptoms() []string {
+	var out []string
+	for _, is := range f.Issues {
+		out = append(out, strings.TrimSpace(is.Reason+" "+is.Message))
+	}
+	if f.Logs != nil {
+		for i, l := range f.Logs.Lines {
+			if i >= 3 {
+				break
+			}
+			out = append(out, truncate(l.Text, 160))
+		}
+	}
+	if len(out) > 8 {
+		out = out[:8]
+	}
+	return out
+}
+
 // JSON is used by --dump-facts and the Phase 8 data generator.
 func (f *Facts) JSON() string {
 	b, _ := json.MarshalIndent(f, "", "  ")

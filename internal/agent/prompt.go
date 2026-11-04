@@ -20,7 +20,7 @@ Rules:
    - None {}: nothing is wrong, or you are not sure.
 
 When you are done, reply with ONLY one JSON object with these keys, no other text:
-root_cause (one sentence), category (image, resources, config, scaling, network, dependency or unknown), target (the deployment that has the problem), evidence (a list of strings, each copied from the data), confidence (0.0 to 1.0), action (an object with type and params).
+root_cause (one sentence), category (image, resources, config, scaling, network, dependency or unknown), target (the deployment that has the problem), evidence (1 to 3 short strings, each copied exactly from the data, under 150 characters), confidence (0.0 to 1.0), action (an object with type and params).
 
 Example for a different app (do not copy its content):
 {"root_cause": "cart-db is OOMKilled because its 64Mi memory limit is too low", "category": "resources", "target": "cart-db", "evidence": ["Pod cart-db-5f9c7b6d8-x2x9q (service cart-db): OOMKilled, restarts 4", "replicas 1 desired, 0 available"], "confidence": 0.8, "action": {"type": "PatchMemoryLimit", "params": {"deployment": "cart-db", "memory": "256Mi"}}}`

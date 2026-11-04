@@ -1,0 +1,15 @@
+# Kyverno (chart version pinned in the Makefile): admission policies that the Safety Gate's
+# changes must pass. Only the admission controller is needed; the background, cleanup and
+# reports controllers are off to save RAM.
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {memory: 384Mi}
+backgroundController:
+  enabled: false
+cleanupController:
+  enabled: false
+reportsController:
+  enabled: false

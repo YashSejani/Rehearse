@@ -1,0 +1,15 @@
+# Rehearse's own services: Postgres + pgvector (Phase 5) and, from Phase 6, the Safety Gate.
+# The Postgres password lives in Secret rehearse-db, created by `make rehearse-db` (never committed).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - gate.yaml
+  - agent-rbac.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: gate-config
+    namespace: rehearse
+    files: [config.yaml=gate-config.yaml]
