@@ -54,4 +54,65 @@ make rehearse-db             # Postgres + pgvector
 
 ## 4. Results
 
-See section 5 (filled in from the live runs).
+Each setting ran 12 scenarios 3 times with the same model (`rehearse-base`), on 2026-11-04.
+`v2` means the improved Phase 5 collector (it adds the logs of crashed containers), so the RAG
+effect is measured separately from the collector's effect.
+
+| Setting | Fault runs | Fully correct | Detected | Target | Category | Action | False alarms |
+|---|---|---|---|---|---|---|---|
+| Phase 4 baseline | 30 | **7** | 23 | 29 | 13 | 13 | 0/6 |
+| v2, no RAG | 30 | **8** | 23 | 30 | 17 | 14 | 0/6 |
+| v2, with RAG | 30 | **12** | 25 | 30 | 12 | 17 | 0/6 |
+
+| Scenario | Baseline | v2, no RAG | v2, with RAG |
+|---|---|---|---|
+| missing-configmap-key | 1/3 | 0/3 | **3/3** |
+| oom-low-limit | 2/3 | 2/3 | **3/3** |
+| replicas-zero | 2/3 | 3/3 | 3/3 |
+| wrong-image | 2/3 | 3/3 | 3/3 |
+| no-fault (2 scenarios) | 6/6 | 6/6 | 6/6 |
+| cpu-stress, db-auth-revoked, failing-readiness, network-delay, pod-failure, wrong-targetport | 0/18 | 0/18 | 0/18 |
+
+### What the numbers mean
+
+- **RAG helps when it finds the right runbook.** `missing-configmap-key` retrieved the config
+  runbook, and all 3 answers became correct.
+- **The wrong runbook can mislead.** `failing-readiness` shows "0/1 replicas available", which
+  looks like scaling, so the first 3 results were the scaled-to-zero runbook, and the model
+  answered `scaling`. In `pod-failure` the model called a deployment with 1 desired replica
+  "scaled to zero". Category correct falls from 17 to 12, but 3 of the 17 were invalid answers
+  that fell back to `unknown`, which `pod-failure` accepts, so they were not real diagnoses.
+- **RAG found nothing for two faults.** In run 1 of `network-delay` and `wrong-targetport` no
+  documents were added. Those faults have no pod problem to search for.
+- **`cpu-stress` is never investigated:** the health check sees nothing wrong, so triage answers
+  "healthy" without asking the model (0 of 3 detected in every setting).
+- **Be careful with this evidence.** With 3 runs per scenario, a difference of 4 runs (8 to 12) is
+  promising but not proof. Most of the gain comes from one scenario. Times are not compared,
+  because data generation shared the CPU during these runs. The machine was powered off once
+  during the no-RAG run. It resumed on fresh pods (docs/context/decisions.md).
+
+### A bug the traces found: the crash reason never reached the agent
+
+`db-auth-revoked` stayed at 0/3 although the collector was improved for it. In the traces, the
+log section said "no error lines" or `unable to retrieve container logs`. There were two causes:
+
+1. The error filter did not match `FTL cmd/geo/db.go:35 > not authorized on geo-db`, because it
+   knew neither `FTL` nor "not authorized". The line was dropped from Loki results too.
+2. The previous container's log file was already gone from the node, so `--previous` returned
+   an error message, and that message itself entered the facts as if it were evidence.
+
+The fix adds both patterns to the filter, removes the log system's own messages, reads the
+crashed container's current log too, and ignores crashes older than the facts window. Result on
+`db-auth-revoked` with RAG, 3 runs:
+
+| | v2, with RAG | With the fix |
+|---|---|---|
+| Crash line in the facts | no | **3/3** |
+| Category correct | 0/3 | **2/3** |
+| Action correct | 1/3 (an invalid answer that fell back to `None`) | 0/3 |
+| Fully correct | 0/3 | 0/3 |
+
+The model now reads the right evidence and says "not authorized", but it still proposes
+`FixImage`, although the runbook it was given says no automatic action can repair this. That is
+a limit of a small model, and a reason every action goes through the Safety Gate and a person.
+The tables above were measured before this fix. Phase 11 measures every setting with it.

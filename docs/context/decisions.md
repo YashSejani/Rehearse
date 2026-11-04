@@ -37,6 +37,9 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · Gate proposals are asynchronous** (`checking` → `awaiting_approval`/`blocked`): rehearsals take minutes and the API proxy cuts requests at 30 s.
 - **2026-11-04 · Gate image `FROM scratch`**, static binary, non-root, read-only FS; tag = git commit (dirty builds `-dev-<time>`). Kyverno chart 3.9.1 (one behind newest), only the admission controller.
 - **2026-11-04 · Agent prompt asks for 1–3 short evidence quotes, max_tokens 768** (a correct answer was cut off at 512 tokens).
+- **2026-11-04 · After a machine reboot, give `hotel` fresh pods before measuring** (databases first, then apps). A reboot counts as a restart of every container, so old shutdown errors would enter the facts as "crash" evidence. The collector now ignores crashes older than the facts window (`crashedSince`). Evals v2-no-rag and v2-rag keep the older binary for a fair comparison; both ran on fresh pods.
+- **2026-11-04 · Phase 9 trains on Kaggle (Colab still works).** Longer sessions, and Save & Run All continues with the browser closed. Only GPU work moves there: data generation and evaluation need the cluster, and Kaggle cannot run it. The dataset stays private.
+- **2026-11-04 · The error filter also matches `FTL` and "not authorized", and drops the log system's own "unable to retrieve container logs" messages.** The real crash line of db-auth-revoked was being filtered out. Result tables in docs/05-rag.md predate this; Phase 11 measures all settings with it.
 
 ## Open (decide in the phase named)
 

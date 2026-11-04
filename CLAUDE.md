@@ -59,7 +59,7 @@ Three ways the agent becomes app-specific, built and measured in this order: pro
 
 ## Current state (keep this section true)
 
-- **Done:** Phases 0–4, 6, 7 (Phase 5 code done, RAG eval running). **Next:** finish Phase 5 eval, then Phase 8 data. Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md).
+- **Done:** Phases 0–7. **Next:** Phase 8 data, then Phases 9–11. Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md). With RAG: 12/30 (docs/05-rag.md).
 - Rehearse services in namespace `rehearse`: Postgres+pgvector (`make rehearse-db`), Safety Gate (`make gate`, own SA, async proposals, sandbox rehearsal in `rehearse-sbx-*` namespaces), Kyverno 3.9.1 + `deploy/policies/`. CLI: `rehearse learn | knowledge ingest|search | fix deploy/x | proposals [id] | approve|reject <id> | sandbox cleanup`.
 - Eval: `make eval LABEL=x ARGS=...` (ml/eval/run.py, scenarios/, Chaos Mesh 2.8.6). Python 3.12 via uv in ml/.venv.
 - Playground (`make playground`): HotelReservation in `hotel` (AIOpsLab variant, Recreate strategy), kube-prometheus-stack + Loki + Alloy in `monitoring`, k6 load 5 req/s. Faults: `make break-image|break-oom|break-scale` and `fix-*` (targets geo, mongodb-profile, user). Queries that spot each fault: docs/01-observability.md. Grafana: `make grafana` (admin / rehearse).
@@ -98,7 +98,7 @@ Jaeger · Chaos Mesh · Kyverno · vCluster · Unsloth + PEFT on Colab · Next.j
 - [x] Phase 2: Collector CLI in Go — 2026-11-04
 - [x] Phase 3: first agent (`rehearse why`) — 2026-11-04
 - [x] Phase 4: evaluation harness + baseline — 2026-11-04
-- [ ] Phase 5: App Knowledge + RAG
+- [x] Phase 5: App Knowledge + RAG — 2026-11-04
 - [x] Phase 6: Safety Gate — 2026-11-04
 - [x] Phase 7: sandbox rehearsal — 2026-11-04
 - [ ] Phase 8: training data generation

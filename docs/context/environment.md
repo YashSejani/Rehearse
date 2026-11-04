@@ -1,6 +1,6 @@
 # Environment: the machine and tools Rehearse runs on
 
-Verified on 2026-11-01. Update this file when a tool is upgraded or added.
+Verified on 2026-11-04. Update this file when a tool is upgraded or added.
 
 ## Machine
 
@@ -21,18 +21,18 @@ Verified on 2026-11-01. Update this file when a tool is upgraded or added.
 | Go | 1.26.8 | Ubuntu apt `golang-go` (`apt upgrade`). Keep `go.mod` at `go 1.26`. |
 | kind | 0.33.0 | `go install sigs.k8s.io/kind@v0.33.0`, binary in `~/go/bin` |
 | Ollama | 0.40.13 | Official script, systemd service, API on `http://127.0.0.1:11434` (re-run the script to update) |
-| Python | 3.14.4 (system) | Ubuntu. ML code needs 3.11 or 3.12 (AIOpsLab requires `>=3.11,<3.13`). Not installed yet; decide how in Phase 4 (see decisions.md). |
+| Python | 3.14.4 (system), 3.12.15 (`ml/.venv`) | System Python from Ubuntu. ML code uses 3.12 through uv 0.13.5 (official release binary in `~/.local/bin`). |
+| Node.js | v22.22.1 | Ubuntu apt, for the dashboard. |
 | git, make, curl, jq | system | Ubuntu |
 
 Host setting (Phase 1): `/etc/sysctl.d/99-rehearse-inotify.conf` raises `fs.inotify.max_user_instances` to 512 and `max_user_watches` to 524288 (kind needs it; see docs/01-observability.md).
-
-Not installed yet (added in later phases): Chaos Mesh (Phase 4), Postgres + pgvector (Phase 5), Kyverno (Phase 6), vCluster CLI (Phase 7), Node.js for the dashboard (Phase 10).
 
 ## Ollama models
 
 | Model | Size | Use |
 |---|---|---|
 | `qwen2.5:3b` | 1.9 GB | Default chat / agent model (good at JSON and tool calls) |
+| `rehearse-base` | same weights | `qwen2.5:3b` with `num_ctx 8192`, temperature 0 (`deploy/ollama/Modelfile.base`); the model the agent uses |
 | `nomic-embed-text` | 274 MB | Embeddings for RAG (Phase 5) |
 
 Speed on this CPU: a 32-token answer took about 12 s including model load. Keep prompts short.
@@ -43,6 +43,7 @@ Speed on this CPU: a 32-token answer took about 12 s including model load. Keep 
 - Nodes: `rehearse-control-plane`, `rehearse-worker`. Config: `deploy/kind-config.yaml`.
 - `make cluster` creates it (idempotent, waits for Ready); `make delete-cluster` removes it to free RAM.
 - The cluster survives reboots only if Docker restarts the node containers; if `kubectl get nodes` fails after a reboot, run `docker start rehearse-control-plane rehearse-worker` or recreate with `make cluster`.
+- After a reboot, restart the `hotel` pods before measuring anything, databases first (docs/context/decisions.md, 2026-11-04).
 
 ## GitHub
 
@@ -59,6 +60,13 @@ Speed on this CPU: a 32-token answer took about 12 s including model load. Keep 
 | Loki | `monitoring` | chart 7.5.0 (Loki 3.6.11), single binary | `svc/loki 3100` |
 | Alloy | `monitoring` | chart 1.15.0 (Alloy v1.21.3) | — |
 | k6 load generator | `monitoring` | grafana/k6 2.3.0, 5 req/s | metrics `k6_*` in Prometheus |
+| Chaos Mesh | `chaos-mesh` | chart 2.8.6 | `make chaos-mesh` |
+| Kyverno (admission only) | `kyverno` | chart 3.9.1 | `make kyverno`, `make policies` |
+| Postgres + pgvector | `rehearse` | `pgvector/pgvector:0.8.7-pg17` | `make rehearse-db`; the CLI port-forwards by itself |
+| Safety Gate | `rehearse` | own image, tag = git commit | `make gate`; reached through the Kubernetes API service proxy |
+| Sandboxes | `rehearse-sbx-*` | temporary copies of the app | `rehearse sandbox cleanup` |
+| Second app "shop" | `app2` | own image + Postgres | `make app2` |
+| Agent service | host, `172.20.0.1:8090` | Alertmanager webhook, dashboard API | `make serve` |
 
-Helm repos added on this machine: `prometheus-community`, `grafana`. RAM with everything running: ~10 GiB used of 14 (hotel ~0.6 GiB, monitoring ~1.2 GiB, kind nodes ~4 GiB total), ~5 GiB available.
+Helm repos added on this machine: `prometheus-community`, `grafana`, `chaos-mesh`, `kyverno`. RAM with everything running: ~10 GiB used of 14 (hotel ~0.6 GiB, monitoring ~1.2 GiB, kind nodes ~4 GiB total), ~5 GiB available.
 

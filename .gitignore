@@ -27,3 +27,4 @@ reference/
 # Agent traces and eval outputs (may contain cluster data)
 traces/
 ml/**/results*.csv
+ml/eval/results/

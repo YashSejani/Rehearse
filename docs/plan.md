@@ -210,7 +210,7 @@ Phase 4 of Rehearse. Read CLAUDE.md, the Phase 4 section of docs/plan.md, docs/c
 
 ---
 
-## Phase 5: App knowledge and RAG memory (Weeks 5–6)
+## Phase 5: App knowledge and RAG memory (Weeks 5–6) · DONE 2026-11-04
 
 **Goal:** `rehearse learn` builds a map of the app and its normal behaviour, and the agent looks up runbooks and past incidents before answering.
 
@@ -238,9 +238,9 @@ Phase 5 of Rehearse. Read CLAUDE.md, the Phase 5 section of docs/plan.md, docs/0
 ```
 
 **Done when:**
-- [ ] `rehearse learn` prints a correct service map of HotelReservation.
-- [ ] A search for "database login failed" returns the right runbook.
-- [ ] The eval table shows RAG vs no-RAG, and you can explain the difference.
+- [x] `rehearse learn` prints a correct service map of HotelReservation.
+- [x] A search for "database login failed" returns the right runbook.
+- [x] The eval table shows RAG vs no-RAG, and you can explain the difference.
 
 ---
 

@@ -30,7 +30,11 @@ type LogLines struct {
 }
 
 // errorFilter keeps lines that look like problems. Case-insensitive.
-const errorFilter = `(?i)(err|fail|fatal|panic|refused|timeout|timed out|denied|unauthori|exception|oom|killed|back-off|unable|cannot|could not)`
+const errorFilter = `(?i)(err|fail|fatal|\bftl\b|panic|refused|timeout|timed out|denied|unauthori|not authori|exception|oom|killed|back-off|unable|cannot|could not)`
+
+// logReadNoise are messages from the log system itself when a log file is gone. They look like
+// errors but say nothing about the app.
+const logReadNoise = `unable to retrieve container logs|failed to try resolving symlinks`
 
 // eventNoise are routine Kubernetes event reasons that never explain a failure.
 const eventNoise = `reason=(Scheduled|Pulled|Pulling|Created|Started|SuccessfulCreate|SuccessfulDelete)\b`
@@ -51,7 +55,7 @@ func (c *Collector) Logs(ctx context.Context, service string, lines int, window 
 	start := end.Add(-window)
 	const readLimit = 1000 // raw lines read; dedup shrinks them to `lines`
 
-	appQ := fmt.Sprintf(`{namespace=%q, app=%q} |~ %q != "fsnotify" != "unable to retrieve container logs"`, c.ns(), service, errorFilter)
+	appQ := fmt.Sprintf(`{namespace=%q, app=%q} |~ %q != "fsnotify" !~ %q`, c.ns(), service, errorFilter, logReadNoise)
 	app, err := c.Loki.QueryRange(ctx, appQ, start, end, readLimit)
 	if err != nil {
 		return nil, fmt.Errorf("app logs: %w", err)
@@ -69,9 +73,9 @@ func (c *Collector) Logs(ctx context.Context, service string, lines int, window 
 	}
 	// A container that just crashed is often not in Loki yet; its last words are. Read the
 	// previous container's log straight from the Kubernetes API (kubectl logs --previous).
-	crash := c.previousLogs(ctx, service)
+	crash := c.previousLogs(ctx, service, start)
 	merged := append(Dedup(app, "app"), Dedup(events, "event")...)
-	merged = append(merged, Dedup(crash, "crash")...)
+	merged = append(merged, newLines(Dedup(crash, "crash"), merged)...)
 	sort.SliceStable(merged, func(i, j int) bool { return merged[i].Last.After(merged[j].Last) })
 	if len(merged) > lines {
 		merged = merged[:lines]
@@ -79,9 +83,18 @@ func (c *Collector) Logs(ctx context.Context, service string, lines int, window 
 	return &LogLines{Service: service, Window: window.String(), Raw: len(app) + len(events) + len(crash), Lines: merged}, nil
 }
 
-// previousLogs returns the last lines of crashed containers of the service (pods whose
-// container restarted), newest first. Errors are ignored: this is extra evidence.
-func (c *Collector) previousLogs(ctx context.Context, service string) []LogEntry {
+// crashedSince reports whether the container's last run ended inside the window. An older
+// end (a crash from yesterday, or a node reboot) must not look like today's evidence.
+func crashedSince(cs corev1.ContainerStatus, since time.Time) bool {
+	t := cs.LastTerminationState.Terminated
+	return cs.RestartCount > 0 && t != nil && !t.FinishedAt.Time.Before(since)
+}
+
+// previousLogs returns the last error lines of containers of the service that crashed since
+// the given time. The previous container's log file may already be gone, and a container that
+// has just crashed again holds the same message in its current log, so both are read unless
+// the container is healthy again. Errors are ignored: this is extra evidence.
+func (c *Collector) previousLogs(ctx context.Context, service string, since time.Time) []LogEntry {
 	if c.Kube == nil {
 		return nil
 	}
@@ -93,17 +106,20 @@ func (c *Collector) previousLogs(ctx context.Context, service string) []LogEntry
 	var out []LogEntry
 	for _, p := range pods.Items {
 		for _, cs := range p.Status.ContainerStatuses {
-			if cs.RestartCount == 0 || cs.LastTerminationState.Terminated == nil {
-				continue
-			}
-			raw, err := c.Kube.CoreV1().Pods(c.ns()).GetLogs(p.Name, &corev1.PodLogOptions{
-				Container: cs.Name, Previous: true, TailLines: &tail}).DoRaw(ctx)
-			if err != nil {
+			if !crashedSince(cs, since) {
 				continue
 			}
 			at := cs.LastTerminationState.Terminated.FinishedAt.Time
-			for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-				if errLineRx.MatchString(line) {
+			for _, previous := range []bool{true, false} {
+				if !previous && cs.Ready {
+					continue
+				}
+				raw, err := c.Kube.CoreV1().Pods(c.ns()).GetLogs(p.Name, &corev1.PodLogOptions{
+					Container: cs.Name, Previous: previous, TailLines: &tail}).DoRaw(ctx)
+				if err != nil {
+					continue
+				}
+				for _, line := range crashLines(string(raw)) {
 					out = append(out, LogEntry{Time: at, Line: line})
 				}
 			}
@@ -112,7 +128,37 @@ func (c *Collector) previousLogs(ctx context.Context, service string) []LogEntry
 	return out
 }
 
-var errLineRx = regexp.MustCompile(errorFilter)
+// crashLines keeps the error lines of a raw container log, without the log system's own messages.
+func crashLines(raw string) []string {
+	var out []string
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		if errLineRx.MatchString(line) && !logReadNoiseRx.MatchString(line) {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+// newLines drops lines whose text is already in have, so one message read from both Loki and
+// the container does not use up two places in the capped list.
+func newLines(lines, have []LogLine) []LogLine {
+	seen := map[string]bool{}
+	for _, l := range have {
+		seen[l.Text] = true
+	}
+	var out []LogLine
+	for _, l := range lines {
+		if !seen[l.Text] {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+var (
+	errLineRx      = regexp.MustCompile(errorFilter)
+	logReadNoiseRx = regexp.MustCompile(logReadNoise)
+)
 
 var (
 	ansiRx = regexp.MustCompile(`\x1b\[[0-9;]*m`)

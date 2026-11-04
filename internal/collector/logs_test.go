@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNormalize(t *testing.T) {
@@ -90,5 +93,58 @@ func TestLogs(t *testing.T) {
 	}
 	if _, err := c.Logs(context.Background(), `geo"} or {x="`, 5, time.Minute); err == nil {
 		t.Error("expected error for a service name that could inject LogQL")
+	}
+}
+
+func TestCrashedSince(t *testing.T) {
+	since := testNow.Add(-10 * time.Minute)
+	ended := func(at time.Time, restarts int32) corev1.ContainerStatus {
+		return corev1.ContainerStatus{RestartCount: restarts, LastTerminationState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{FinishedAt: metav1.NewTime(at)}}}
+	}
+	cases := []struct {
+		name string
+		cs   corev1.ContainerStatus
+		want bool
+	}{
+		{"crash inside the window", ended(testNow.Add(-time.Minute), 1), true},
+		{"old crash or node reboot", ended(testNow.Add(-time.Hour), 7), false},
+		{"never restarted", ended(testNow, 0), false},
+		{"no termination recorded", corev1.ContainerStatus{RestartCount: 1}, false},
+	}
+	for _, c := range cases {
+		if got := crashedSince(c.cs, since); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestCrashLines(t *testing.T) {
+	raw := "\x1b[32mINF\x1b[0m cmd/geo/db.go:31 > Generating test data...\n" +
+		"\x1b[31mFTL\x1b[0m cmd/geo/db.go:35 > not authorized on geo-db to execute command\n" +
+		"unable to retrieve container logs for containerd://0229\n" +
+		"failed to try resolving symlinks in path \"/var/log/pods/hotel_geo/0.log\": no such file\n"
+	got := crashLines(raw)
+	if len(got) != 1 || !strings.Contains(got[0], "not authorized on geo-db") {
+		t.Errorf("crashLines = %q, want only the FTL line", got)
+	}
+}
+
+func TestErrorFilterFindsFatalWithoutTheWordError(t *testing.T) {
+	for _, line := range []string{"FTL cmd/x.go:1 > bad", "not authorized on geo-db", "Unauthorized"} {
+		if !errLineRx.MatchString(line) {
+			t.Errorf("errorFilter missed %q", line)
+		}
+	}
+	if errLineRx.MatchString("INF cmd/geo/main.go:23 > Reading config...") {
+		t.Error("errorFilter matched a normal line")
+	}
+}
+
+func TestNewLines(t *testing.T) {
+	have := []LogLine{{Text: "same"}}
+	got := newLines([]LogLine{{Text: "same"}, {Text: "other"}}, have)
+	if len(got) != 1 || got[0].Text != "other" {
+		t.Errorf("newLines = %v", got)
 	}
 }
