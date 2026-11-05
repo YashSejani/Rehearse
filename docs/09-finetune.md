@@ -56,5 +56,59 @@ make eval LABEL=tuned-rag ARGS="--model rehearse-hotel"
 | tuned | rehearse-hotel | off | `results/tuned.csv` + `offline.py` |
 | tuned + RAG | rehearse-hotel | on | `results/tuned-rag.csv` |
 
-Results go in section 5 once the training run is done. Training needs a GPU, which this laptop
-does not have; everything around it (data, notebook, Modelfile, evaluation) is ready.
+## 5. Results
+
+Training ran on a Kaggle GPU on 318 training and 38 validation examples.
+
+![Training and validation loss](loss.png)
+
+Training loss fell from about 0.46 to about 0.01, and validation loss fell and did not climb, so
+the plot shows no overfitting. That is weaker evidence than it looks: the answers are templated and
+validation has the same fault types as training, so a low loss mostly means it learned our format.
+
+**Live test on the real cluster, HotelReservation, fully correct answers:**
+
+| Setting | Fault runs | Fully correct | Share | False alarms | Avg s |
+|---|---|---|---|---|---|
+| base | 19 | 4 | 21% | 0/4 | 223 |
+| base + RAG | 20 | 6 | 30% | 0/4 | 100 |
+| **tuned** | 30 | **11** | **37%** | 1/6 | 205 |
+| tuned + RAG | 30 | 5 | 17% | 0/6 | 239 |
+
+Results by scenario (fully correct of runs). `db-auth-revoked` and `pod-failure` were held out of
+training:
+
+| Scenario | base | base + RAG | tuned | tuned + RAG |
+|---|---|---|---|---|
+| missing-configmap-key | 0/2 | 2/2 | 3/3 | 2/3 |
+| replicas-zero | 1/2 | 2/2 | 3/3 | 2/3 |
+| wrong-image | 1/2 | 2/2 | 3/3 | 1/3 |
+| failing-readiness | 0/2 | 0/2 | 2/3 | 0/3 |
+| oom-low-limit | 2/2 | 0/2 | 0/3 | 0/3 |
+| wrong-targetport | 0/1 | 0/2 | 0/3 | 0/3 |
+| network-delay | 0/2 | 0/2 | 0/3 | 0/3 |
+| cpu-stress | 0/2 | 0/2 | 0/3 | 0/3 |
+| db-auth-revoked (held out) | 0/2 | 0/2 | 0/3 | 0/3 |
+| pod-failure (held out) | 0/2 | 0/2 | 0/3 | 0/3 |
+
+**What this means, in plain words:**
+
+- Fine-tuning helped on fault types it trained on. It scored 0 of 6 on the two held out, so this
+  test does not show that it learned to handle new faults.
+- Tuned with RAG was the worst setting. We did not investigate why. One possible reason is that the
+  model learned to answer from facts in one format, and retrieved text changes that format.
+- Tuned has the only false alarm, and it lost the OOM case that base got right.
+- We kept `rehearse-base` with RAG as the default. Tuned has the higher share here, but the earlier
+  full run of base with RAG scored 12 of 30 (40%), which is higher, so tuned has not clearly won.
+
+**Limits of these numbers:**
+
+- The base rows are incomplete. The final runs were stopped for time, so base has 2 full rounds
+  (the second without one wrong-targetport run) and base + RAG has 2 rounds.
+- Differences of a few runs are small evidence: the same base + RAG setting gave 40% in the earlier
+  run and 30% here, on slightly different code.
+- The machine was overloaded for part of the night, so the time column is not a fair speed test.
+- The harness logged "NOT RESTORED" 4 to 5 times per setting: the app was not healthy again within
+  the wait, and the next scenario started anyway. Some wrong answers could come from that.
+- `ml/eval/offline.py` (the test on `test.jsonl`: JSON-valid rate, tokens) was **not run**, so there
+  is no offline table.

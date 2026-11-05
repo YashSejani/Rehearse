@@ -364,9 +364,9 @@ Phase 9 of Rehearse. Read CLAUDE.md, the Phase 9 section of docs/plan.md and doc
 ```
 
 **Done when:**
-- [ ] Training loss goes down and you saved the loss plot.
+- [x] Training loss goes down and you saved the loss plot.
 - [ ] `ollama run rehearse-hotel` answers in the right JSON format.
-- [ ] You have the 4-way comparison table and can explain the result, even if fine-tuning did not win.
+- [x] You have the 4-way comparison table and can explain the result, even if fine-tuning did not win.
 
 ---
 
@@ -421,6 +421,6 @@ Produce clean tables and charts, and write docs/demo-script.md: a 3-minute live 
 ```
 
 **Done when:**
-- [ ] The second app works with no changes to the core Go code.
+- [x] The second app works with no changes to the core Go code.
 - [ ] The report has all three results tables.
 - [ ] You rehearsed the live demo twice end to end.

@@ -40,6 +40,7 @@ Format: date · decision · why. Add an entry whenever a phase makes a choice th
 - **2026-11-04 · After a machine reboot, give `hotel` fresh pods before measuring** (databases first, then apps). A reboot counts as a restart of every container, so old shutdown errors would enter the facts as "crash" evidence. The collector now ignores crashes older than the facts window (`crashedSince`). Evals v2-no-rag and v2-rag keep the older binary for a fair comparison; both ran on fresh pods.
 - **2026-11-04 · Phase 9 trains on Kaggle (Colab still works).** Longer sessions, and Save & Run All continues with the browser closed. Only GPU work moves there: data generation and evaluation need the cluster, and Kaggle cannot run it. The dataset stays private.
 - **2026-11-04 · The error filter also matches `FTL` and "not authorized", and drops the log system's own "unable to retrieve container logs" messages.** The real crash line of db-auth-revoked was being filtered out. Result tables in docs/05-rag.md predate this; Phase 11 measures all settings with it.
+- **2026-11-05 · Default stays `rehearse-base` with RAG; `rehearse-hotel` is kept as an option.** Tuned scored 11/30 and tuned + RAG 5/30, against 12/30 for the earlier full base + RAG run, and it got 0/6 on held-out fault types. The final base runs were stopped at 19 and 20 fault runs to leave time for the demo video before the presentation.
 
 ## Open (decide in the phase named)
 

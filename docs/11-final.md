@@ -63,7 +63,18 @@ scenario now waits 150 s, with no code change, and the re-run gave 0 of 2 with 0
 false-alarm cells come from that one re-run, because the health check answers before any model or
 RAG is used.
 
-**HotelReservation, all four settings:** filled in when the overnight runs finish.
+**HotelReservation, all four settings** (details and limits in docs/09-finetune.md section 5):
+
+| Setting | Fault runs | Fully correct | False alarms |
+|---|---|---|---|
+| base | 19 | 4 (21%) | 0/4 |
+| base + RAG | 20 | 6 (30%) | 0/4 |
+| tuned | 30 | 11 (37%) | 1/6 |
+| tuned + RAG | 30 | 5 (17%) | 0/6 |
+
+Earlier full runs for comparison: baseline 7 of 30, base 8 of 30, base + RAG 12 of 30, each with
+0 of 6 false alarms. The final base runs were cut short for time, so they have fewer runs. No tuned
+model was trained for the shop app, so the shop table has base model rows only.
 
 ### B2. Gate on vs off
 
@@ -100,6 +111,14 @@ The adapter (`RehearseAgent`: `init_context`, `async get_action`) turns our JSON
 `submit("Yes"/"No")` for detection and `submit([...])` for localization. It has unit tests.
 
 **Not run against AIOpsLab.** The plan runs AIOpsLab in its own kind cluster, and it installs
-OpenEBS and its own Prometheus, which does not fit in memory beside our stack on this laptop. The
-plan's fallback, deleting our cluster, was not taken because the other evaluations and the demo
-need it. So there is no AIOpsLab table, and this done-check is open.
+OpenEBS and its own Prometheus. We expected that not to fit in memory beside our stack on this
+laptop, but we did not try it. The plan's fallback, deleting our cluster, was not taken because the
+other evaluations and the demo need it. So there is no AIOpsLab table, and this done-check is open.
+
+## 4. What is still open
+
+- Phase 11 is **not fully done**: the AIOpsLab table is missing, no second adapter was trained for
+  the shop app, and the live demo has not been rehearsed twice by the team.
+- `ml/eval/offline.py` was not run, and the final base runs are incomplete.
+- Slack was tested with a stand-in receiver, not a real Slack workspace.
+- Yash still has to read 10 generated training examples, as the Phase 8 check asks.

@@ -59,7 +59,7 @@ Three ways the agent becomes app-specific, built and measured in this order: pro
 
 ## Current state (keep this section true)
 
-- **Done:** Phases 0–8, 10. **Next:** Phase 9 on Kaggle, Phase 11. Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md). With RAG: 12/30 (docs/05-rag.md).
+- **Done:** Phases 0–8, 10; Phase 9 except offline.py. **Open:** Phase 11 (AIOpsLab table, second adapter, demo rehearsals). Baseline: 7/30 fully correct, 0/6 false alarms (docs/04-evaluation.md). With RAG: 12/30 (docs/05-rag.md). Tuned: 11/30, tuned+RAG 5/30 (docs/09-finetune.md). Default stays rehearse-base + RAG.
 - Rehearse services in namespace `rehearse`: Postgres+pgvector (`make rehearse-db`), Safety Gate (`make gate`, own SA, async proposals, sandbox rehearsal in `rehearse-sbx-*` namespaces), Kyverno 3.9.1 + `deploy/policies/`. CLI: `rehearse learn | knowledge ingest|search | fix deploy/x | proposals [id] | approve|reject <id> | sandbox cleanup`.
 - Interfaces: `make serve` (needs `REHEARSE_DASHBOARD_TOKEN`; alerts → incidents → Slack → memory), `dashboard/` on localhost:3001, `rehearse mcp` via `.mcp.json`. Stop `serve` during evals: it would investigate every injected fault.
 - Eval: `make eval LABEL=x ARGS=...` (ml/eval/run.py, scenarios/, Chaos Mesh 2.8.6). Python 3.12 via uv in ml/.venv.
@@ -103,6 +103,6 @@ Jaeger · Chaos Mesh · Kyverno · vCluster · Unsloth + PEFT on Colab · Next.j
 - [x] Phase 6: Safety Gate — 2026-11-04
 - [x] Phase 7: sandbox rehearsal — 2026-11-04
 - [x] Phase 8: training data generation — 2026-11-04
-- [ ] Phase 9: LoRA fine-tuning
+- [x] Phase 9: LoRA fine-tuning (offline.py not run) — 2026-11-05
 - [x] Phase 10: interfaces (alerts, Slack, dashboard, MCP) — 2026-11-04
 - [ ] Phase 11: second app + final evaluation

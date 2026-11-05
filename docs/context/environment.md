@@ -33,6 +33,7 @@ Host setting (Phase 1): `/etc/sysctl.d/99-rehearse-inotify.conf` raises `fs.inot
 |---|---|---|
 | `qwen2.5:3b` | 1.9 GB | Default chat / agent model (good at JSON and tool calls) |
 | `rehearse-base` | same weights | `qwen2.5:3b` with `num_ctx 8192`, temperature 0 (`deploy/ollama/Modelfile.base`); the model the agent uses |
+| `rehearse-hotel` | 1.9 GB | Fine-tuned on Kaggle (Q4_K_M GGUF, `ml/finetune/Modelfile`); optional, not the default |
 | `nomic-embed-text` | 274 MB | Embeddings for RAG (Phase 5) |
 
 Speed on this CPU: a 32-token answer took about 12 s including model load. Keep prompts short.
